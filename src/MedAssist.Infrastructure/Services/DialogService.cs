@@ -3,27 +3,29 @@ using MedAssist.Application.DTOs;
 using MedAssist.Application.Requests;
 using MedAssist.Application.Services;
 using MedAssist.Domain.Enums;
-using MedAssist.Infrastructure.Persistence;
+using MedAssist.Infrastructure.Data;
+using Microsoft.EntityFrameworkCore;
 
 namespace MedAssist.Infrastructure.Services;
 
 public class DialogService : IDialogService
 {
-    private readonly InMemoryDataStore _dataStore;
+    private readonly MedAssistDbContext _db;
     private readonly ICurrentUserContext _currentUser;
 
-    public DialogService(InMemoryDataStore dataStore, ICurrentUserContext currentUser)
+    public DialogService(MedAssistDbContext db, ICurrentUserContext currentUser)
     {
-        _dataStore = dataStore;
+        _db = db;
         _currentUser = currentUser;
     }
 
-    public Task<DialogDto> CreateAsync(CreateDialogRequest request, CancellationToken cancellationToken)
+    public async Task<DialogDto> CreateAsync(CreateDialogRequest request, CancellationToken cancellationToken)
     {
         var doctorId = _currentUser.GetCurrentUserId();
         if (request.PatientId.HasValue)
         {
-            if (!_dataStore.Patients.TryGetValue(request.PatientId.Value, out var patient) || patient.DoctorId != doctorId)
+            var patient = await _db.Patients.FirstOrDefaultAsync(p => p.Id == request.PatientId.Value && p.DoctorId == doctorId, cancellationToken);
+            if (patient is null)
             {
                 throw new InvalidOperationException("Patient not found for current doctor.");
             }
@@ -39,56 +41,57 @@ public class DialogService : IDialogService
             CreatedAt = DateTimeOffset.UtcNow
         };
 
-        _dataStore.Dialogs[dialog.Id] = dialog;
+        _db.Dialogs.Add(dialog);
 
-        if (request.PatientId is { } patientId && _dataStore.Patients.TryGetValue(patientId, out var patientToUpdate))
+        if (request.PatientId is { } patientId)
         {
-            patientToUpdate.LastDialogId = dialog.Id;
-            patientToUpdate.LastInteractionAt = dialog.CreatedAt;
+            var patientToUpdate = await _db.Patients.FirstOrDefaultAsync(p => p.Id == patientId && p.DoctorId == doctorId, cancellationToken);
+            if (patientToUpdate != null)
+            {
+                patientToUpdate.LastDialogId = dialog.Id;
+                patientToUpdate.LastInteractionAt = dialog.CreatedAt;
+            }
         }
 
-        return Task.FromResult(ToDto(dialog));
+        await _db.SaveChangesAsync(cancellationToken);
+        return ToDto(dialog);
     }
 
-    public Task<IReadOnlyCollection<DialogDto>> GetListAsync(Guid? patientId, CancellationToken cancellationToken)
+    public async Task<IReadOnlyCollection<DialogDto>> GetListAsync(Guid? patientId, CancellationToken cancellationToken)
     {
         var doctorId = _currentUser.GetCurrentUserId();
-        var dialogs = _dataStore.Dialogs.Values
+        var dialogs = await _db.Dialogs
             .Where(d => d.DoctorId == doctorId && (!patientId.HasValue || d.PatientId == patientId))
             .OrderByDescending(d => d.CreatedAt)
-            .Select(ToDto)
-            .ToList()
-            .AsReadOnly();
+            .ToListAsync(cancellationToken);
 
-        return Task.FromResult<IReadOnlyCollection<DialogDto>>(dialogs);
+        return dialogs.Select(ToDto).ToList().AsReadOnly();
     }
 
-    public Task<DialogDto?> GetAsync(Guid id, CancellationToken cancellationToken)
+    public async Task<DialogDto?> GetAsync(Guid id, CancellationToken cancellationToken)
     {
         var doctorId = _currentUser.GetCurrentUserId();
-        if (_dataStore.Dialogs.TryGetValue(id, out var dialog) && dialog.DoctorId == doctorId)
-        {
-            return Task.FromResult<DialogDto?>(ToDto(dialog));
-        }
-
-        return Task.FromResult<DialogDto?>(null);
+        var dialog = await _db.Dialogs.FirstOrDefaultAsync(d => d.Id == id && d.DoctorId == doctorId, cancellationToken);
+        return dialog is null ? null : ToDto(dialog);
     }
 
-    public Task<DialogDto?> CloseAsync(Guid id, CancellationToken cancellationToken)
+    public async Task<DialogDto?> CloseAsync(Guid id, CancellationToken cancellationToken)
     {
         var doctorId = _currentUser.GetCurrentUserId();
-        if (_dataStore.Dialogs.TryGetValue(id, out var dialog) && dialog.DoctorId == doctorId)
+        var dialog = await _db.Dialogs.FirstOrDefaultAsync(d => d.Id == id && d.DoctorId == doctorId, cancellationToken);
+        if (dialog != null)
         {
             if (dialog.Status == DialogStatus.Open)
             {
                 dialog.Status = DialogStatus.Closed;
                 dialog.ClosedAt = DateTimeOffset.UtcNow;
+                await _db.SaveChangesAsync(cancellationToken);
             }
 
-            return Task.FromResult<DialogDto?>(ToDto(dialog));
+            return ToDto(dialog);
         }
 
-        return Task.FromResult<DialogDto?>(null);
+        return null;
     }
 
     private static DialogDto ToDto(Domain.Entities.Dialog dialog) =>

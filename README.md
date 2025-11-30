@@ -4,9 +4,12 @@ MVP REST API для врачебных сценариев (регистраци�
 
 ## Стек и слои
 - .NET 8, ASP.NET Core Controllers, Swagger/OpenAPI.
+- Валидация: FluentValidation.
+- Логирование: Serilog (консоль).
+- Data: EF Core (InMemory по умолчанию, Npgsql при наличии connection string), модуль DI.
 - Clean Architecture: `Api` (транспорт), `Application` (контракты), `Domain` (сущности), `Infrastructure` (in-memory реализация, DI).
 - Хранение пока in-memory; в `docker-compose.yml` уже заведены Postgres/Redis для будущей БД/кеша.
-- Наблюдаемость: health `GET /v1/health`, единый стиль ответов, нижний регистр роутов.
+- Наблюдаемость: единый стиль ответов, нижний регистр роутов.
 
 Структура решения:
 - `src/MedAssist.Api` — REST контроллеры, composition root.
@@ -24,6 +27,7 @@ MVP REST API для врачебных сценариев (регистраци�
 
 ## Локальный запуск
 ```bash
+export ConnectionStrings__Default="Host=localhost;Port=5432;Database=medassist;Username=medassist;Password=medassist"
 dotnet restore
 dotnet run --project src/MedAssist.Api
 # Swagger UI: http://localhost:5142/swagger (порт из лога запуска)
@@ -34,9 +38,10 @@ dotnet run --project src/MedAssist.Api
 docker compose build
 docker compose up
 # API: http://localhost:8080/swagger
+# Frontend (nginx): http://localhost:4173
 ```
 
 ## Заметки и дальнейшие шаги
 - Аутентификация заглушена: `StubCurrentUserContext` фиксирует одного врача; позже заменить на реальную авторизацию.
-- Персистентность пока in-memory; подменить `InMemoryDataStore` на Postgres/Redis-репозитории, добавить миграции.
+- Персистентность: Postgres через EF Core (EnsureCreated). Подключение: `ConnectionStrings__Default`.
 - Идемпотентность, валидацию и rate limit можно включить через middleware/Polly, когда определитесь с требованиями.

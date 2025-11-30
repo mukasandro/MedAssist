@@ -3,6 +3,7 @@ namespace MedAssist.Application.DTOs;
 public record DoctorPublicDto(
     Guid Id,
     string DisplayName,
+    string SpecializationCode,
     string SpecializationTitle,
     string? Degrees,
     int? ExperienceYears,

@@ -3,50 +3,51 @@ using MedAssist.Application.DTOs;
 using MedAssist.Application.Requests;
 using MedAssist.Application.Services;
 using MedAssist.Domain.Enums;
-using MedAssist.Infrastructure.Persistence;
+using MedAssist.Infrastructure.Data;
+using Microsoft.EntityFrameworkCore;
 
 namespace MedAssist.Infrastructure.Services;
 
 public class MessageService : IMessageService
 {
-    private readonly InMemoryDataStore _dataStore;
+    private readonly MedAssistDbContext _db;
     private readonly ICurrentUserContext _currentUser;
 
-    public MessageService(InMemoryDataStore dataStore, ICurrentUserContext currentUser)
+    public MessageService(MedAssistDbContext db, ICurrentUserContext currentUser)
     {
-        _dataStore = dataStore;
+        _db = db;
         _currentUser = currentUser;
     }
 
-    public Task<IReadOnlyCollection<MessageDto>> GetListAsync(Guid dialogId, CancellationToken cancellationToken)
+    public async Task<IReadOnlyCollection<MessageDto>> GetListAsync(Guid dialogId, CancellationToken cancellationToken)
     {
         var doctorId = _currentUser.GetCurrentUserId();
-        if (!_dataStore.Dialogs.TryGetValue(dialogId, out var dialog) || dialog.DoctorId != doctorId)
+        var dialog = await _db.Dialogs.FirstOrDefaultAsync(d => d.Id == dialogId && d.DoctorId == doctorId, cancellationToken);
+        if (dialog is null)
         {
-            return Task.FromResult<IReadOnlyCollection<MessageDto>>(Array.Empty<MessageDto>());
+            return Array.Empty<MessageDto>();
         }
 
-        var messages = _dataStore.Messages.Values
+        var messages = await _db.Messages
             .Where(m => m.DialogId == dialogId)
             .OrderBy(m => m.CreatedAt)
-            .Select(ToDto)
-            .ToList()
-            .AsReadOnly();
+            .ToListAsync(cancellationToken);
 
-        return Task.FromResult<IReadOnlyCollection<MessageDto>>(messages);
+        return messages.Select(ToDto).ToList().AsReadOnly();
     }
 
-    public Task<MessageDto?> AddAsync(Guid dialogId, CreateMessageRequest request, CancellationToken cancellationToken)
+    public async Task<MessageDto?> AddAsync(Guid dialogId, CreateMessageRequest request, CancellationToken cancellationToken)
     {
         var doctorId = _currentUser.GetCurrentUserId();
-        if (!_dataStore.Dialogs.TryGetValue(dialogId, out var dialog) || dialog.DoctorId != doctorId)
+        var dialog = await _db.Dialogs.FirstOrDefaultAsync(d => d.Id == dialogId && d.DoctorId == doctorId, cancellationToken);
+        if (dialog is null)
         {
-            return Task.FromResult<MessageDto?>(null);
+            return null;
         }
 
         if (!Enum.TryParse<MessageRole>(request.Role, true, out var role))
         {
-            return Task.FromResult<MessageDto?>(null);
+            return null;
         }
 
         var message = new Domain.Entities.Message
@@ -58,16 +59,21 @@ public class MessageService : IMessageService
             CreatedAt = DateTimeOffset.UtcNow
         };
 
-        _dataStore.Messages[message.Id] = message;
+        _db.Messages.Add(message);
 
-        if (dialog.PatientId is { } patientId && _dataStore.Patients.TryGetValue(patientId, out var patient))
+        if (dialog.PatientId is { } patientId)
         {
-            patient.LastInteractionAt = message.CreatedAt;
-            patient.LastDialogId = dialog.Id;
-            patient.LastSummary = message.Content.Length > 180 ? message.Content[..180] : message.Content;
+            var patient = await _db.Patients.FirstOrDefaultAsync(p => p.Id == patientId && p.DoctorId == doctorId, cancellationToken);
+            if (patient != null)
+            {
+                patient.LastInteractionAt = message.CreatedAt;
+                patient.LastDialogId = dialog.Id;
+                patient.LastSummary = message.Content.Length > 180 ? message.Content[..180] : message.Content;
+            }
         }
 
-        return Task.FromResult<MessageDto?>(ToDto(message));
+        await _db.SaveChangesAsync(cancellationToken);
+        return ToDto(message);
     }
 
     private static MessageDto ToDto(Domain.Entities.Message message) =>

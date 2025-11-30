@@ -4,24 +4,25 @@ using MedAssist.Application.Requests;
 using MedAssist.Application.Services;
 using MedAssist.Domain.Entities;
 using MedAssist.Domain.Enums;
-using MedAssist.Infrastructure.Persistence;
+using MedAssist.Infrastructure.Data;
+using Microsoft.EntityFrameworkCore;
 
 namespace MedAssist.Infrastructure.Services;
 
 public class RegistrationService : IRegistrationService
 {
-    private readonly InMemoryDataStore _dataStore;
+    private readonly MedAssistDbContext _db;
     private readonly ICurrentUserContext _currentUser;
 
-    public RegistrationService(InMemoryDataStore dataStore, ICurrentUserContext currentUser)
+    public RegistrationService(MedAssistDbContext db, ICurrentUserContext currentUser)
     {
-        _dataStore = dataStore;
+        _db = db;
         _currentUser = currentUser;
     }
 
-    public Task<RegistrationDto> UpsertAsync(UpsertRegistrationRequest request, CancellationToken cancellationToken)
+    public async Task<RegistrationDto> UpsertAsync(UpsertRegistrationRequest request, CancellationToken cancellationToken)
     {
-        var doctor = EnsureDoctor();
+        var doctor = await EnsureDoctorAsync(cancellationToken);
 
         doctor.DisplayName = request.DisplayName;
         doctor.SpecializationCode = request.SpecializationCode;
@@ -42,19 +43,45 @@ public class RegistrationService : IRegistrationService
         {
             doctor.Registration.Status = RegistrationStatus.InProgress;
             doctor.Registration.StartedAt = DateTimeOffset.UtcNow;
+            doctor.RegisteredAt ??= DateTimeOffset.UtcNow;
         }
 
         TryCompleteRegistration(doctor);
-        return Task.FromResult(ToDto(doctor));
+        await _db.SaveChangesAsync(cancellationToken);
+        return ToDto(doctor);
     }
 
-    public Task<RegistrationDto> GetAsync(CancellationToken cancellationToken)
+    public async Task<RegistrationDto> GetAsync(CancellationToken cancellationToken)
     {
-        var doctor = EnsureDoctor();
-        return Task.FromResult(ToDto(doctor));
+        var doctor = await EnsureDoctorAsync(cancellationToken);
+        return ToDto(doctor);
     }
 
-    private Domain.Entities.Doctor EnsureDoctor() => _dataStore.GetOrCreateDoctor(_currentUser.GetCurrentUserId());
+    private async Task<Domain.Entities.Doctor> EnsureDoctorAsync(CancellationToken cancellationToken)
+    {
+        var doctorId = _currentUser.GetCurrentUserId();
+        var doctor = await _db.Doctors.Include(d => d.Registration)
+            .FirstOrDefaultAsync(d => d.Id == doctorId, cancellationToken);
+
+        if (doctor != null)
+        {
+            return doctor;
+        }
+
+        doctor = new Domain.Entities.Doctor
+        {
+            Id = doctorId,
+            Registration = new Registration
+            {
+                Status = RegistrationStatus.NotStarted
+            },
+            AcceptingNewPatients = true
+        };
+
+        _db.Doctors.Add(doctor);
+        await _db.SaveChangesAsync(cancellationToken);
+        return doctor;
+    }
 
     private static RegistrationDto ToDto(Domain.Entities.Doctor doctor)
     {

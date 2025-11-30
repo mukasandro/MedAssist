@@ -3,35 +3,34 @@ using MedAssist.Application.DTOs;
 using MedAssist.Application.Requests;
 using MedAssist.Application.Services;
 using MedAssist.Domain.Enums;
-using MedAssist.Infrastructure.Persistence;
+using MedAssist.Infrastructure.Data;
+using Microsoft.EntityFrameworkCore;
 
 namespace MedAssist.Infrastructure.Services;
 
 public class ConsentService : IConsentService
 {
-    private readonly InMemoryDataStore _dataStore;
+    private readonly MedAssistDbContext _db;
     private readonly ICurrentUserContext _currentUser;
 
-    public ConsentService(InMemoryDataStore dataStore, ICurrentUserContext currentUser)
+    public ConsentService(MedAssistDbContext db, ICurrentUserContext currentUser)
     {
-        _dataStore = dataStore;
+        _db = db;
         _currentUser = currentUser;
     }
 
-    public Task<IReadOnlyCollection<ConsentDto>> GetListAsync(CancellationToken cancellationToken)
+    public async Task<IReadOnlyCollection<ConsentDto>> GetListAsync(CancellationToken cancellationToken)
     {
         var doctorId = _currentUser.GetCurrentUserId();
-        var consents = _dataStore.Consents.Values
+        var consents = await _db.Consents
             .Where(c => c.DoctorId == doctorId)
             .OrderByDescending(c => c.CreatedAt)
-            .Select(ToDto)
-            .ToList()
-            .AsReadOnly();
+            .ToListAsync(cancellationToken);
 
-        return Task.FromResult<IReadOnlyCollection<ConsentDto>>(consents);
+        return consents.Select(ToDto).ToList().AsReadOnly();
     }
 
-    public Task<ConsentDto> AddHumanInLoopAsync(CreateHumanInLoopConsentRequest request, CancellationToken cancellationToken)
+    public async Task<ConsentDto> AddHumanInLoopAsync(CreateHumanInLoopConsentRequest request, CancellationToken cancellationToken)
     {
         var doctorId = _currentUser.GetCurrentUserId();
         var consent = new Domain.Entities.Consent
@@ -43,8 +42,9 @@ public class ConsentService : IConsentService
             CreatedAt = DateTimeOffset.UtcNow
         };
 
-        _dataStore.Consents[consent.Id] = consent;
-        return Task.FromResult(ToDto(consent));
+        _db.Consents.Add(consent);
+        await _db.SaveChangesAsync(cancellationToken);
+        return ToDto(consent);
     }
 
     private static ConsentDto ToDto(Domain.Entities.Consent consent) =>

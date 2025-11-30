@@ -1,17 +1,18 @@
 using MedAssist.Application.Abstractions;
 using MedAssist.Application.Services;
-using MedAssist.Infrastructure.Persistence;
+using MedAssist.Infrastructure.Data;
 using MedAssist.Infrastructure.Security;
 using MedAssist.Infrastructure.Services;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace MedAssist.Infrastructure;
 
 public static class DependencyInjection
 {
-    public static IServiceCollection AddInfrastructure(this IServiceCollection services)
+    public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
-        services.AddSingleton<InMemoryDataStore>();
+        services.AddMedAssistDb(configuration);
         services.AddSingleton<ICurrentUserContext, StubCurrentUserContext>();
 
         services.AddScoped<IRegistrationService, RegistrationService>();
@@ -21,6 +22,8 @@ public static class DependencyInjection
         services.AddScoped<IMessageService, MessageService>();
         services.AddScoped<IConsentService, ConsentService>();
         services.AddScoped<IReferenceService, ReferenceService>();
+        services.AddScoped<IDoctorAdminService, DoctorAdminService>();
+        services.AddScoped<IPatientAdminService, PatientAdminService>();
 
         return services;
     }

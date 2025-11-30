@@ -8,6 +8,8 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       DOTNET_ENVIRONMENT: Development
+      ConnectionStrings__Default: Host=postgres;Port=5432;Database=medassist;Username=medassist;Password=medassist
+      Cors__Origins: http://localhost:4173,http://127.0.0.1:4173
     ports:
       - "8080:8080"
     depends_on:
@@ -37,15 +39,16 @@ services:
       timeout: 5s
       retries: 5
 
-  redis:
-    image: redis:7-alpine
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    environment:
+      VITE_API_URL: http://api:8080
     ports:
-      - "6379:6379"
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      - "4173:80"
+    depends_on:
+      - api
 
 volumes:
   postgres_data:

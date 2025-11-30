@@ -3,47 +3,42 @@ using MedAssist.Application.DTOs;
 using MedAssist.Application.Requests;
 using MedAssist.Application.Services;
 using MedAssist.Domain.Enums;
-using MedAssist.Infrastructure.Persistence;
+using MedAssist.Infrastructure.Data;
+using Microsoft.EntityFrameworkCore;
 
 namespace MedAssist.Infrastructure.Services;
 
 public class PatientService : IPatientService
 {
-    private readonly InMemoryDataStore _dataStore;
+    private readonly MedAssistDbContext _db;
     private readonly ICurrentUserContext _currentUser;
 
-    public PatientService(InMemoryDataStore dataStore, ICurrentUserContext currentUser)
+    public PatientService(MedAssistDbContext db, ICurrentUserContext currentUser)
     {
-        _dataStore = dataStore;
+        _db = db;
         _currentUser = currentUser;
     }
 
-    public Task<IReadOnlyCollection<PatientDto>> GetListAsync(CancellationToken cancellationToken)
+    public async Task<IReadOnlyCollection<PatientDto>> GetListAsync(CancellationToken cancellationToken)
     {
         var doctorId = _currentUser.GetCurrentUserId();
-        var patients = _dataStore.Patients.Values
+        var patients = await _db.Patients
             .Where(p => p.DoctorId == doctorId)
             .OrderByDescending(p => p.LastInteractionAt ?? p.CreatedAt)
             .ThenBy(p => p.FullName)
-            .Select(ToDto)
-            .ToList()
-            .AsReadOnly();
+            .ToListAsync(cancellationToken);
 
-        return Task.FromResult<IReadOnlyCollection<PatientDto>>(patients);
+        return patients.Select(ToDto).ToList().AsReadOnly();
     }
 
-    public Task<PatientDto?> GetAsync(Guid id, CancellationToken cancellationToken)
+    public async Task<PatientDto?> GetAsync(Guid id, CancellationToken cancellationToken)
     {
         var doctorId = _currentUser.GetCurrentUserId();
-        if (_dataStore.Patients.TryGetValue(id, out var patient) && patient.DoctorId == doctorId)
-        {
-            return Task.FromResult<PatientDto?>(ToDto(patient));
-        }
-
-        return Task.FromResult<PatientDto?>(null);
+        var patient = await _db.Patients.FirstOrDefaultAsync(p => p.Id == id && p.DoctorId == doctorId, cancellationToken);
+        return patient is null ? null : ToDto(patient);
     }
 
-    public Task<PatientDto> CreateAsync(CreatePatientRequest request, CancellationToken cancellationToken)
+    public async Task<PatientDto> CreateAsync(CreatePatientRequest request, CancellationToken cancellationToken)
     {
         var doctorId = _currentUser.GetCurrentUserId();
         var patient = new Domain.Entities.Patient
@@ -65,47 +60,56 @@ public class PatientService : IPatientService
             LastInteractionAt = DateTimeOffset.UtcNow
         };
 
-        _dataStore.Patients[patient.Id] = patient;
-        return Task.FromResult(ToDto(patient));
+        _db.Patients.Add(patient);
+        await _db.SaveChangesAsync(cancellationToken);
+        return ToDto(patient);
     }
 
-    public Task DeleteAsync(Guid id, CancellationToken cancellationToken)
+    public async Task DeleteAsync(Guid id, CancellationToken cancellationToken)
     {
         var doctorId = _currentUser.GetCurrentUserId();
-        if (_dataStore.Patients.TryGetValue(id, out var patient) && patient.DoctorId == doctorId)
+        var patient = await _db.Patients.FirstOrDefaultAsync(p => p.Id == id && p.DoctorId == doctorId, cancellationToken);
+        if (patient != null)
         {
-            _dataStore.Patients.TryRemove(id, out _);
+            _db.Patients.Remove(patient);
+            await _db.SaveChangesAsync(cancellationToken);
         }
-
-        return Task.CompletedTask;
     }
 
-    public Task<ProfileDto> SelectAsync(Guid id, CancellationToken cancellationToken)
+    public async Task<ProfileDto> SelectAsync(Guid id, CancellationToken cancellationToken)
     {
-        var doctor = _dataStore.GetOrCreateDoctor(_currentUser.GetCurrentUserId());
-        if (_dataStore.Patients.TryGetValue(id, out var patient) && patient.DoctorId == doctor.Id)
+        var doctorId = _currentUser.GetCurrentUserId();
+        var doctor = await _db.Doctors.Include(d => d.Registration).FirstOrDefaultAsync(d => d.Id == doctorId, cancellationToken);
+        if (doctor != null)
         {
-            doctor.LastSelectedPatientId = id;
+            var patient = await _db.Patients.FirstOrDefaultAsync(p => p.Id == id && p.DoctorId == doctorId, cancellationToken);
+            if (patient != null)
+            {
+                doctor.LastSelectedPatientId = id;
+                await _db.SaveChangesAsync(cancellationToken);
+            }
+
+            return new ProfileDto(
+                doctor.Id,
+                doctor.DisplayName,
+                doctor.SpecializationCode,
+                doctor.SpecializationTitle,
+                doctor.Degrees,
+                doctor.ExperienceYears,
+                doctor.Languages,
+                doctor.Bio,
+                doctor.FocusAreas,
+                doctor.AcceptingNewPatients,
+                doctor.Location,
+                doctor.ContactPolicy,
+                doctor.AvatarUrl,
+                doctor.RegistrationStatus,
+                doctor.LastSelectedPatientId,
+                doctor.Verified,
+                doctor.Rating);
         }
 
-        return Task.FromResult(new ProfileDto(
-            doctor.Id,
-            doctor.DisplayName,
-            doctor.SpecializationCode,
-            doctor.SpecializationTitle,
-            doctor.Degrees,
-            doctor.ExperienceYears,
-            doctor.Languages,
-            doctor.Bio,
-            doctor.FocusAreas,
-            doctor.AcceptingNewPatients,
-            doctor.Location,
-            doctor.ContactPolicy,
-            doctor.AvatarUrl,
-            doctor.RegistrationStatus,
-            doctor.LastSelectedPatientId,
-            doctor.Verified,
-            doctor.Rating));
+        throw new InvalidOperationException("Doctor not found");
     }
 
     private static PatientDto ToDto(Domain.Entities.Patient patient) =>
