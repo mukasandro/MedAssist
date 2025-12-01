@@ -11,7 +11,7 @@ services:
       ConnectionStrings__Default: Host=postgres;Port=5432;Database=medassist;Username=medassist;Password=medassist
       Cors__Origins: http://localhost:4173,http://127.0.0.1:4173
     ports:
-      - "8080:8080"
+      - "5555:8080"
     depends_on:
       postgres:
         condition: service_healthy
@@ -28,7 +28,8 @@ services:
       POSTGRES_PASSWORD: medassist
       POSTGRES_DB: medassist
     ports:
-      - "5432:5432"
+      # Хостовый порт вынесен на 5433, чтобы не конфликтовать с локальным Postgres
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
