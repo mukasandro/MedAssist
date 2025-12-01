@@ -58,6 +58,21 @@ public class RegistrationService : IRegistrationService
         return ToDto(doctor);
     }
 
+    public async Task<RegistrationDto?> GetByTelegramUsernameAsync(string telegramUsername, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(telegramUsername))
+        {
+            return null;
+        }
+
+        var doctor = await _db.Doctors
+            .Include(d => d.Registration)
+            .AsNoTracking()
+            .FirstOrDefaultAsync(d => d.TelegramUsername == telegramUsername, cancellationToken);
+
+        return doctor is null ? null : ToDto(doctor);
+    }
+
     private async Task<Domain.Entities.Doctor> EnsureDoctorAsync(CancellationToken cancellationToken)
     {
         var doctorId = _currentUser.GetCurrentUserId();

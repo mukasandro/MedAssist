@@ -39,4 +39,14 @@ public class RegistrationController : ControllerBase
         var result = await _registrationService.GetAsync(cancellationToken);
         return Ok(result);
     }
+
+    [SwaggerOperation(Summary = "Статус регистрации по Telegram username", Description = "Поиск регистрации врача по его Telegram username.")]
+    [HttpGet("{username}")]
+    [ProducesResponseType(typeof(RegistrationDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetByTelegramUsername(string username, CancellationToken cancellationToken)
+    {
+        var result = await _registrationService.GetByTelegramUsernameAsync(username, cancellationToken);
+        return result is null ? NotFound() : Ok(result);
+    }
 }

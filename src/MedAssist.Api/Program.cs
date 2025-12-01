@@ -1,6 +1,8 @@
 using MedAssist.Application;
 using MedAssist.Infrastructure;
 using MedAssist.Infrastructure.Data;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Formatters;
 using Microsoft.OpenApi.Models;
 using Serilog;
 using Swashbuckle.AspNetCore.Filters;
@@ -17,7 +19,12 @@ Log.Logger = new LoggerConfiguration()
 builder.Host.UseSerilog();
 
 builder.Services.AddRouting(options => options.LowercaseUrls = true);
-builder.Services.AddControllers();
+builder.Services.AddControllers(options =>
+{
+    // Гарантируем application/json: убираем текстовый форматтер и навешиваем Produces глобально
+    options.OutputFormatters.RemoveType<StringOutputFormatter>();
+    options.Filters.Add(new ProducesAttribute("application/json"));
+});
 builder.Services.AddFluentValidationAutoValidation();
 builder.Services.AddFluentValidationClientsideAdapters();
 builder.Services.AddEndpointsApiExplorer();
