@@ -27,6 +27,7 @@ public class RegistrationService : IRegistrationService
         doctor.DisplayName = request.DisplayName;
         doctor.SpecializationCode = request.SpecializationCode;
         doctor.SpecializationTitle = request.SpecializationTitle;
+        doctor.TelegramUsername = request.TelegramUsername;
         doctor.Degrees = request.Degrees;
         doctor.ExperienceYears = request.ExperienceYears;
         doctor.Languages = request.Languages;
