@@ -10,6 +10,7 @@ public class UpsertRegistrationRequestValidator : AbstractValidator<UpsertRegist
         RuleFor(x => x.DisplayName).NotEmpty().MaximumLength(256);
         RuleFor(x => x.SpecializationCode).NotEmpty().MaximumLength(100);
         RuleFor(x => x.SpecializationTitle).NotEmpty().MaximumLength(256);
+        RuleFor(x => x.TelegramUsername).NotEmpty().MaximumLength(64);
         RuleFor(x => x.Degrees).MaximumLength(128);
         RuleFor(x => x.ExperienceYears).GreaterThanOrEqualTo(0).When(x => x.ExperienceYears.HasValue);
         RuleFor(x => x.Languages).MaximumLength(128);

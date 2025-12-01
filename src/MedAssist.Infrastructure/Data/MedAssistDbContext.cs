@@ -23,6 +23,7 @@ public class MedAssistDbContext : DbContext
             b.Property(x => x.DisplayName).IsRequired();
             b.Property(x => x.SpecializationCode).HasMaxLength(100);
             b.Property(x => x.SpecializationTitle).HasMaxLength(256);
+            b.Property(x => x.TelegramUsername).IsRequired().HasMaxLength(64);
             b.Property(x => x.Languages).HasMaxLength(128);
             b.Property(x => x.FocusAreas).HasMaxLength(512);
             b.OwnsOne(x => x.Registration);

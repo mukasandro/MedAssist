@@ -22,8 +22,8 @@ public static class DependencyInjection
         services.AddScoped<IMessageService, MessageService>();
         services.AddScoped<IConsentService, ConsentService>();
         services.AddScoped<IReferenceService, ReferenceService>();
-        services.AddScoped<IDoctorAdminService, DoctorAdminService>();
-        services.AddScoped<IPatientAdminService, PatientAdminService>();
+        services.AddScoped<IDoctorService, DoctorService>();
+        services.AddScoped<IPatientDirectoryService, PatientDirectoryService>();
 
         return services;
     }

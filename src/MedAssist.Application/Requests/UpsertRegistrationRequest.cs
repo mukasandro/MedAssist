@@ -4,6 +4,7 @@ public record UpsertRegistrationRequest(
     string DisplayName,
     string SpecializationCode,
     string SpecializationTitle,
+    string TelegramUsername,
     string? Degrees,
     int? ExperienceYears,
     string? Languages,

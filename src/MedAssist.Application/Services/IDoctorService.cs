@@ -3,7 +3,7 @@ using MedAssist.Application.Requests;
 
 namespace MedAssist.Application.Services;
 
-public interface IDoctorAdminService
+public interface IDoctorService
 {
     Task<IReadOnlyCollection<DoctorPublicDto>> GetAllAsync(CancellationToken cancellationToken);
     Task<DoctorPublicDto?> UpdateAsync(Guid id, UpdateDoctorRequest request, CancellationToken cancellationToken);

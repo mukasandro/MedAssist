@@ -87,7 +87,8 @@ public class RegistrationService : IRegistrationService
     private static RegistrationDto ToDto(Domain.Entities.Doctor doctor)
     {
         var reg = doctor.Registration;
-        return new RegistrationDto(reg.Status, reg.Specialization, reg.HumanInLoopConfirmed, reg.StartedAt);
+        return new RegistrationDto(reg.Status, reg.Specialization, reg.HumanInLoopConfirmed, reg.StartedAt,
+            doctor.TelegramUsername);
     }
 
     private static void TryCompleteRegistration(Domain.Entities.Doctor doctor)

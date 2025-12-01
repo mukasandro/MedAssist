@@ -7,6 +7,7 @@ public record ProfileDto(
     string DisplayName,
     string SpecializationCode,
     string SpecializationTitle,
+    string TelegramUsername,
     string? Degrees,
     int? ExperienceYears,
     string? Languages,

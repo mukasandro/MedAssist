@@ -8,12 +8,14 @@ export interface RegistrationDto {
   specialization: string | null
   humanInLoopConfirmed: boolean
   startedAt?: string | null
+  telegramUsername: string
 }
 
 export interface UpsertRegistrationRequest {
   displayName: string
   specializationCode: string
   specializationTitle: string
+  telegramUsername: string
   degrees?: string | null
   experienceYears?: number | null
   languages?: string | null
@@ -31,6 +33,7 @@ export interface ProfileDto {
   displayName: string
   specializationCode: string
   specializationTitle: string
+  telegramUsername: string
   degrees?: string | null
   experienceYears?: number | null
   languages?: string | null
@@ -161,7 +164,7 @@ export interface UpdateDoctorRequest {
   rating?: number | null
 }
 
-export interface AdminPatientDto {
+export interface PatientDirectoryDto {
   id: string
   doctorId: string
   fullName: string
@@ -181,7 +184,7 @@ export interface AdminPatientDto {
   lastInteractionAt?: string | null
 }
 
-export interface UpdatePatientAdminRequest {
+export interface UpdatePatientDirectoryRequest {
   fullName: string
   birthDate?: string | null
   sex?: PatientSex | null

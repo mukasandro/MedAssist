@@ -6,4 +6,5 @@ public record RegistrationDto(
     RegistrationStatus Status,
     string? Specialization,
     bool HumanInLoopConfirmed,
-    DateTimeOffset? StartedAt);
+    DateTimeOffset? StartedAt,
+    string TelegramUsername);

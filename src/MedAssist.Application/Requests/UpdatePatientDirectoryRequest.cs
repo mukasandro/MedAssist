@@ -2,7 +2,7 @@ using MedAssist.Domain.Enums;
 
 namespace MedAssist.Application.Requests;
 
-public record UpdatePatientAdminRequest(
+public record UpdatePatientDirectoryRequest(
     string FullName,
     DateTime? BirthDate,
     PatientSex? Sex,

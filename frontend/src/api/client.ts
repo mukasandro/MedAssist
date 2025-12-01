@@ -13,8 +13,8 @@ import {
   SpecializationDto,
   DoctorPublicDto,
   UpdateDoctorRequest,
-  AdminPatientDto,
-  UpdatePatientAdminRequest,
+  PatientDirectoryDto,
+  UpdatePatientDirectoryRequest,
 } from './types'
 
 const resolveBaseUrl = () => {
@@ -68,17 +68,17 @@ export const ApiClient = {
   // Reference
   getSpecializations: () => api.get<SpecializationDto[]>('/v1/reference/specializations').then((r) => r.data),
 
-  // Admin
-  getDoctors: () => api.get<DoctorPublicDto[]>('/v1/admin/doctors').then((r) => r.data),
+  // Directory
+  getDoctors: () => api.get<DoctorPublicDto[]>('/v1/doctors').then((r) => r.data),
   updateDoctor: (id: string, payload: UpdateDoctorRequest) =>
-    api.put<DoctorPublicDto>(`/v1/admin/doctors/${id}`, payload).then((r) => r.data),
+    api.put<DoctorPublicDto>(`/v1/doctors/${id}`, payload).then((r) => r.data),
 
-  // Admin patients
-  getPatientsAdmin: () => api.get<AdminPatientDto[]>('/v1/admin/patients').then((r) => r.data),
-  updatePatientAdmin: (id: string, payload: UpdatePatientAdminRequest) =>
-    api.put<AdminPatientDto>(`/v1/admin/patients/${id}`, payload).then((r) => r.data),
-  createPatientAdminTest: () => api.post<AdminPatientDto>('/v1/admin/patients/test', {}).then((r) => r.data),
-  createDoctorAdminTest: () => api.post<DoctorPublicDto>('/v1/admin/doctors/test', {}).then((r) => r.data),
+  // Patient directory
+  getPatientsDirectory: () => api.get<PatientDirectoryDto[]>('/v1/patient-directory').then((r) => r.data),
+  updatePatientDirectory: (id: string, payload: UpdatePatientDirectoryRequest) =>
+    api.put<PatientDirectoryDto>(`/v1/patient-directory/${id}`, payload).then((r) => r.data),
+  createPatientDirectoryTest: () => api.post<PatientDirectoryDto>('/v1/patient-directory/test', {}).then((r) => r.data),
+  createDoctorTest: () => api.post<DoctorPublicDto>('/v1/doctors/test', {}).then((r) => r.data),
 }
 
 export default api

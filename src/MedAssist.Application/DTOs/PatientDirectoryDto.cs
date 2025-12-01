@@ -2,7 +2,7 @@ using MedAssist.Domain.Enums;
 
 namespace MedAssist.Application.DTOs;
 
-public record AdminPatientDto(
+public record PatientDirectoryDto(
     Guid Id,
     Guid DoctorId,
     string FullName,

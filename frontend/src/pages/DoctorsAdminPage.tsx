@@ -18,7 +18,7 @@ export default function DoctorsAdminPage() {
   const [form, setForm] = useState<DoctorPublicDto | null>(null)
   const [saveMessage, setSaveMessage] = useState<string | null>(null)
   const testMutation = useMutation({
-    mutationFn: ApiClient.createDoctorAdminTest,
+    mutationFn: ApiClient.createDoctorTest,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-doctors'] })
     },

@@ -10,6 +10,7 @@ public class Doctor
     public string DisplayName { get; set; } = string.Empty;
     public string SpecializationCode { get; set; } = string.Empty;
     public string SpecializationTitle { get; set; } = string.Empty;
+    public string TelegramUsername { get; set; } = string.Empty;
     public string? Degrees { get; set; }
     public int? ExperienceYears { get; set; }
     public string? Languages { get; set; }

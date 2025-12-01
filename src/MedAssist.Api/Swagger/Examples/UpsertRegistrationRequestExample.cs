@@ -10,6 +10,7 @@ public class UpsertRegistrationRequestExample : IExamplesProvider<UpsertRegistra
             DisplayName: "Д-р Иван Петров",
             SpecializationCode: "cardiology",
             SpecializationTitle: "Кардиология",
+            TelegramUsername: "dr_ivan_petrov",
             Degrees: "к.м.н.",
             ExperienceYears: 12,
             Languages: "ru,en",

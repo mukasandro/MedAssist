@@ -6,6 +6,9 @@ COPY package.json package-lock.json* ./
 RUN npm install
 
 COPY . .
+# Vite reads env vars at build time, so make API URL configurable via build args
+ARG VITE_API_URL=http://localhost:5555
+ENV VITE_API_URL=${VITE_API_URL}
 RUN npm run build
 
 # Serve stage

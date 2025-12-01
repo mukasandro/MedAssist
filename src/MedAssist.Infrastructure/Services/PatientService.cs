@@ -94,6 +94,7 @@ public class PatientService : IPatientService
                 doctor.DisplayName,
                 doctor.SpecializationCode,
                 doctor.SpecializationTitle,
+                doctor.TelegramUsername,
                 doctor.Degrees,
                 doctor.ExperienceYears,
                 doctor.Languages,

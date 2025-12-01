@@ -3,9 +3,9 @@ using MedAssist.Application.Requests;
 
 namespace MedAssist.Application.Services;
 
-public interface IPatientAdminService
+public interface IPatientDirectoryService
 {
-    Task<IReadOnlyCollection<AdminPatientDto>> GetAllAsync(CancellationToken cancellationToken);
-    Task<AdminPatientDto?> UpdateAsync(Guid id, UpdatePatientAdminRequest request, CancellationToken cancellationToken);
-    Task<AdminPatientDto> CreateRandomAsync(CancellationToken cancellationToken);
+    Task<IReadOnlyCollection<PatientDirectoryDto>> GetAllAsync(CancellationToken cancellationToken);
+    Task<PatientDirectoryDto?> UpdateAsync(Guid id, UpdatePatientDirectoryRequest request, CancellationToken cancellationToken);
+    Task<PatientDirectoryDto> CreateRandomAsync(CancellationToken cancellationToken);
 }

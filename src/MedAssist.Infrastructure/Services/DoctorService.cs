@@ -7,12 +7,12 @@ using Bogus;
 
 namespace MedAssist.Infrastructure.Services;
 
-public class DoctorAdminService : IDoctorAdminService
+public class DoctorService : IDoctorService
 {
     private readonly MedAssistDbContext _db;
     private static readonly Guid DefaultDoctorId = Guid.Parse("11111111-1111-1111-1111-111111111111");
 
-    public DoctorAdminService(MedAssistDbContext db)
+    public DoctorService(MedAssistDbContext db)
     {
         _db = db;
     }
@@ -63,6 +63,7 @@ public class DoctorAdminService : IDoctorAdminService
             Languages = "ru,en",
             Bio = faker.Lorem.Sentence(6),
             FocusAreas = faker.PickRandom(new[] { "профилактика,гипертензия", "аритмии", "гипертония" }),
+            TelegramUsername = faker.Internet.UserName().Replace(".", "_"),
             AcceptingNewPatients = faker.Random.Bool(),
             Location = faker.Address.City(),
             ContactPolicy = "Отвечаю в рабочие часы",
@@ -94,6 +95,7 @@ public class DoctorAdminService : IDoctorAdminService
                 DisplayName = "Д-р Тестовый",
                 SpecializationCode = "therapy",
                 SpecializationTitle = "Терапия",
+                TelegramUsername = "test_doctor",
                 AcceptingNewPatients = true,
                 Languages = "ru",
                 Registration = new Domain.Entities.Registration

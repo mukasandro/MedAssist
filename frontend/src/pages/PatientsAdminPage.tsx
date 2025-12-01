@@ -4,7 +4,13 @@ import { Card } from '../components/Card'
 import { Badge } from '../components/Badge'
 import { Button } from '../components/Button'
 import { ApiClient } from '../api/client'
-import type { AdminPatientDto, UpdatePatientAdminRequest, PatientSex, PatientStatus, CreatePatientRequest } from '../api/types'
+import type {
+  PatientDirectoryDto,
+  UpdatePatientDirectoryRequest,
+  PatientSex,
+  PatientStatus,
+  CreatePatientRequest,
+} from '../api/types'
 import { Input } from '../components/Input'
 import { Textarea } from '../components/Textarea'
 import { Modal } from '../components/Modal'
@@ -13,10 +19,13 @@ const statusTone = (status: PatientStatus) => (status === 1 ? 'success' : 'warni
 
 export default function PatientsAdminPage() {
   const queryClient = useQueryClient()
-  const { data: patients, isLoading, error } = useQuery({ queryKey: ['admin-patients'], queryFn: ApiClient.getPatientsAdmin })
+  const { data: patients, isLoading, error } = useQuery({
+    queryKey: ['admin-patients'],
+    queryFn: ApiClient.getPatientsDirectory,
+  })
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [editorOpen, setEditorOpen] = useState(false)
-  const [form, setForm] = useState<AdminPatientDto | null>(null)
+  const [form, setForm] = useState<PatientDirectoryDto | null>(null)
   const [saveMessage, setSaveMessage] = useState<string | null>(null)
   const [createOpen, setCreateOpen] = useState(false)
   const [createForm, setCreateForm] = useState<CreatePatientRequest>({
@@ -33,8 +42,8 @@ export default function PatientsAdminPage() {
   })
 
   const updateMutation = useMutation({
-    mutationFn: (payload: { id: string; body: UpdatePatientAdminRequest }) =>
-      ApiClient.updatePatientAdmin(payload.id, payload.body),
+    mutationFn: (payload: { id: string; body: UpdatePatientDirectoryRequest }) =>
+      ApiClient.updatePatientDirectory(payload.id, payload.body),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-patients'] })
       setSaveMessage('Сохранено')
@@ -63,7 +72,7 @@ export default function PatientsAdminPage() {
   })
 
   const createTestMutation = useMutation({
-    mutationFn: ApiClient.createPatientAdminTest,
+    mutationFn: ApiClient.createPatientDirectoryTest,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-patients'] })
     },
@@ -81,7 +90,7 @@ export default function PatientsAdminPage() {
     setSelectedIds((prev) => (checked ? [...prev, id] : prev.filter((x) => x !== id)))
   }
 
-  const handleChange = (key: keyof AdminPatientDto, value: any) => {
+  const handleChange = (key: keyof PatientDirectoryDto, value: any) => {
     setForm((prev) => (prev ? { ...prev, [key]: value } : prev))
   }
 
@@ -132,7 +141,7 @@ export default function PatientsAdminPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/60">
-                {patients.map((p: AdminPatientDto) => (
+                {patients.map((p: PatientDirectoryDto) => (
                   <tr
                     key={p.id}
                     className="cursor-pointer hover:bg-accentMuted"
@@ -269,7 +278,7 @@ export default function PatientsAdminPage() {
               disabled={!form || updateMutation.isPending}
               onClick={() => {
                 if (!form) return
-                const payload: UpdatePatientAdminRequest = {
+                const payload: UpdatePatientDirectoryRequest = {
                   fullName: form.fullName,
                   birthDate: form.birthDate ?? null,
                   sex: form.sex as PatientSex | null,

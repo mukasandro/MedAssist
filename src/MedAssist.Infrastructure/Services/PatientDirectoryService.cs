@@ -8,22 +8,22 @@ using Bogus;
 
 namespace MedAssist.Infrastructure.Services;
 
-public class PatientAdminService : IPatientAdminService
+public class PatientDirectoryService : IPatientDirectoryService
 {
     private readonly MedAssistDbContext _db;
 
-    public PatientAdminService(MedAssistDbContext db)
+    public PatientDirectoryService(MedAssistDbContext db)
     {
         _db = db;
     }
 
-    public async Task<IReadOnlyCollection<AdminPatientDto>> GetAllAsync(CancellationToken cancellationToken)
+    public async Task<IReadOnlyCollection<PatientDirectoryDto>> GetAllAsync(CancellationToken cancellationToken)
     {
         var patients = await _db.Patients.AsNoTracking().ToListAsync(cancellationToken);
         return patients.Select(ToDto).ToList();
     }
 
-    public async Task<AdminPatientDto?> UpdateAsync(Guid id, UpdatePatientAdminRequest request, CancellationToken cancellationToken)
+    public async Task<PatientDirectoryDto?> UpdateAsync(Guid id, UpdatePatientDirectoryRequest request, CancellationToken cancellationToken)
     {
         var patient = await _db.Patients.FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
         if (patient == null) return null;
@@ -44,7 +44,7 @@ public class PatientAdminService : IPatientAdminService
         return ToDto(patient);
     }
 
-    public async Task<AdminPatientDto> CreateRandomAsync(CancellationToken cancellationToken)
+    public async Task<PatientDirectoryDto> CreateRandomAsync(CancellationToken cancellationToken)
     {
         await EnsureDefaultDoctorAsync(cancellationToken);
         var faker = new Faker("ru");
@@ -87,6 +87,7 @@ public class PatientAdminService : IPatientAdminService
                 DisplayName = "Д-р Тестовый",
                 SpecializationCode = "therapy",
                 SpecializationTitle = "Терапия",
+                TelegramUsername = "test_doctor",
                 AcceptingNewPatients = true,
                 Languages = "ru",
                 Registration = new Domain.Entities.Registration
@@ -101,7 +102,7 @@ public class PatientAdminService : IPatientAdminService
         }
     }
 
-    private static AdminPatientDto ToDto(Domain.Entities.Patient patient) =>
+    private static PatientDirectoryDto ToDto(Domain.Entities.Patient patient) =>
         new(patient.Id, patient.DoctorId, patient.FullName, patient.BirthDate, patient.Sex, patient.Phone, patient.Email,
             patient.Allergies, patient.ChronicConditions, patient.Tags, patient.Status, patient.Notes, patient.CreatedAt,
             patient.UpdatedAt, patient.LastDialogId, patient.LastSummary, patient.LastInteractionAt);
