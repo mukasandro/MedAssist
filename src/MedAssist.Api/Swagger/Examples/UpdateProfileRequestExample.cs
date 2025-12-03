@@ -8,8 +8,8 @@ public class UpdateProfileRequestExample : IExamplesProvider<UpdateProfileReques
     public UpdateProfileRequest GetExamples() =>
         new(
             DisplayName: "Д-р Иван Петров",
-            SpecializationCode: "cardiology",
-            SpecializationTitle: "Кардиология",
+            SpecializationCodes: new[] { "cardiology" },
+            SpecializationTitles: new[] { "Кардиология" },
             Degrees: "к.м.н.",
             ExperienceYears: 12,
             Languages: "ru,en",

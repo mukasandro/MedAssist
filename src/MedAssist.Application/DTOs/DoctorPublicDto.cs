@@ -1,10 +1,12 @@
+using System.Collections.Generic;
+
 namespace MedAssist.Application.DTOs;
 
 public record DoctorPublicDto(
     Guid Id,
     string DisplayName,
-    string SpecializationCode,
-    string SpecializationTitle,
+    IReadOnlyCollection<string> SpecializationCodes,
+    IReadOnlyCollection<string> SpecializationTitles,
     string? Degrees,
     int? ExperienceYears,
     string? Languages,

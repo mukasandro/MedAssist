@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using MedAssist.Application.Abstractions;
 using MedAssist.Application.DTOs;
 using MedAssist.Application.Requests;
@@ -89,11 +90,13 @@ public class PatientService : IPatientService
                 await _db.SaveChangesAsync(cancellationToken);
             }
 
+            var codes = doctor.SpecializationCodes ?? new List<string>();
+            var titles = doctor.SpecializationTitles ?? new List<string>();
             return new ProfileDto(
                 doctor.Id,
                 doctor.DisplayName,
-                doctor.SpecializationCode,
-                doctor.SpecializationTitle,
+                codes.AsReadOnly(),
+                titles.AsReadOnly(),
                 doctor.TelegramUsername,
                 doctor.Degrees,
                 doctor.ExperienceYears,

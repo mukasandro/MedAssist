@@ -8,8 +8,7 @@ public class UpsertRegistrationRequestExample : IExamplesProvider<UpsertRegistra
     public UpsertRegistrationRequest GetExamples() =>
         new(
             DisplayName: "Д-р Иван Петров",
-            SpecializationCode: "cardiology",
-            SpecializationTitle: "Кардиология",
+            SpecializationCodes: new[] { "cardiology" },
             TelegramUsername: "dr_ivan_petrov",
             Degrees: "к.м.н.",
             ExperienceYears: 12,

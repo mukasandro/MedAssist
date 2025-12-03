@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+using System.Linq;
 using MedAssist.Application.Abstractions;
 using MedAssist.Application.DTOs;
 using MedAssist.Application.Requests;
@@ -29,9 +31,21 @@ public class ProfileService : IProfileService
     public async Task<ProfileDto> UpdateAsync(UpdateProfileRequest request, CancellationToken cancellationToken)
     {
         var doctor = await EnsureDoctorAsync(cancellationToken);
+        doctor.Registration ??= new Registration();
+        doctor.SpecializationCodes ??= new List<string>();
+        doctor.SpecializationTitles ??= new List<string>();
         doctor.DisplayName = request.DisplayName ?? doctor.DisplayName;
-        doctor.SpecializationCode = request.SpecializationCode ?? doctor.SpecializationCode;
-        doctor.SpecializationTitle = request.SpecializationTitle ?? doctor.SpecializationTitle;
+        if (request.SpecializationCodes is not null)
+        {
+            doctor.SpecializationCodes = request.SpecializationCodes.ToList();
+            doctor.Registration.SpecializationCodes = doctor.SpecializationCodes.ToList();
+        }
+
+        if (request.SpecializationTitles is not null)
+        {
+            doctor.SpecializationTitles = request.SpecializationTitles.ToList();
+            doctor.Registration.SpecializationTitles = doctor.SpecializationTitles.ToList();
+        }
         doctor.Degrees = request.Degrees ?? doctor.Degrees;
         doctor.ExperienceYears = request.ExperienceYears ?? doctor.ExperienceYears;
         doctor.Languages = request.Languages ?? doctor.Languages;
@@ -47,6 +61,9 @@ public class ProfileService : IProfileService
             doctor.LastSelectedPatientId = request.LastSelectedPatientId;
         }
 
+        doctor.Registration.SpecializationCodes = doctor.SpecializationCodes.ToList();
+        doctor.Registration.SpecializationTitles = doctor.SpecializationTitles.ToList();
+
         await _db.SaveChangesAsync(cancellationToken);
         return ToDto(doctor);
     }
@@ -59,6 +76,8 @@ public class ProfileService : IProfileService
 
         if (doctor != null)
         {
+            doctor.SpecializationCodes ??= new List<string>();
+            doctor.SpecializationTitles ??= new List<string>();
             return doctor;
         }
 
@@ -74,15 +93,20 @@ public class ProfileService : IProfileService
 
         _db.Doctors.Add(doctor);
         await _db.SaveChangesAsync(cancellationToken);
+        doctor.SpecializationCodes ??= new List<string>();
+        doctor.SpecializationTitles ??= new List<string>();
         return doctor;
     }
 
-    private static ProfileDto ToDto(Domain.Entities.Doctor doctor) =>
-        new(
+    private static ProfileDto ToDto(Domain.Entities.Doctor doctor)
+    {
+        var codes = doctor.SpecializationCodes ?? new List<string>();
+        var titles = doctor.SpecializationTitles ?? new List<string>();
+        return new(
             doctor.Id,
             doctor.DisplayName,
-            doctor.SpecializationCode,
-            doctor.SpecializationTitle,
+            codes.AsReadOnly(),
+            titles.AsReadOnly(),
             doctor.TelegramUsername,
             doctor.Degrees,
             doctor.ExperienceYears,
@@ -97,4 +121,5 @@ public class ProfileService : IProfileService
             doctor.LastSelectedPatientId,
             doctor.Verified,
             doctor.Rating);
+    }
 }

@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using MedAssist.Domain.Enums;
 
 namespace MedAssist.Application.DTOs;
@@ -5,8 +6,8 @@ namespace MedAssist.Application.DTOs;
 public record ProfileDto(
     Guid DoctorId,
     string DisplayName,
-    string SpecializationCode,
-    string SpecializationTitle,
+    IReadOnlyCollection<string> SpecializationCodes,
+    IReadOnlyCollection<string> SpecializationTitles,
     string TelegramUsername,
     string? Degrees,
     int? ExperienceYears,

@@ -21,12 +21,16 @@ public class MedAssistDbContext : DbContext
         {
             b.HasKey(x => x.Id);
             b.Property(x => x.DisplayName).IsRequired();
-            b.Property(x => x.SpecializationCode).HasMaxLength(100);
-            b.Property(x => x.SpecializationTitle).HasMaxLength(256);
+            b.Property(x => x.SpecializationCodes).HasColumnType("text[]");
+            b.Property(x => x.SpecializationTitles).HasColumnType("text[]");
             b.Property(x => x.TelegramUsername).IsRequired().HasMaxLength(64);
             b.Property(x => x.Languages).HasMaxLength(128);
             b.Property(x => x.FocusAreas).HasMaxLength(512);
-            b.OwnsOne(x => x.Registration);
+            b.OwnsOne(x => x.Registration, reg =>
+            {
+                reg.Property(r => r.SpecializationCodes).HasColumnType("text[]");
+                reg.Property(r => r.SpecializationTitles).HasColumnType("text[]");
+            });
         });
 
         modelBuilder.Entity<Patient>(b =>

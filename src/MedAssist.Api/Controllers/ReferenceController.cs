@@ -24,4 +24,17 @@ public class ReferenceController : ControllerBase
         var result = await _referenceService.GetSpecializationsAsync(cancellationToken);
         return Ok(result);
     }
+
+    [SwaggerOperation(
+        Summary = "Обновить справочник специализаций",
+        Description = "Принимает тот же JSON, который возвращает GET /specializations, и заменяет справочник.")]
+    [HttpPut("specializations")]
+    [ProducesResponseType(typeof(IReadOnlyCollection<SpecializationDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> UpdateSpecializations(
+        [FromBody] IReadOnlyCollection<SpecializationDto> specializations,
+        CancellationToken cancellationToken)
+    {
+        var result = await _referenceService.UpdateSpecializationsAsync(specializations, cancellationToken);
+        return Ok(result);
+    }
 }

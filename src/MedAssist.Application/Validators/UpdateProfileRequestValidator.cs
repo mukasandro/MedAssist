@@ -8,8 +8,13 @@ public class UpdateProfileRequestValidator : AbstractValidator<UpdateProfileRequ
     public UpdateProfileRequestValidator()
     {
         RuleFor(x => x.DisplayName).MaximumLength(256);
-        RuleFor(x => x.SpecializationCode).MaximumLength(100);
-        RuleFor(x => x.SpecializationTitle).MaximumLength(256);
+        RuleForEach(x => x.SpecializationCodes!).MaximumLength(100).When(x => x.SpecializationCodes != null);
+        RuleForEach(x => x.SpecializationTitles!).MaximumLength(256).When(x => x.SpecializationTitles != null);
+        RuleFor(x => x)
+            .Must(x => x.SpecializationCodes == null ||
+                       (x.SpecializationTitles != null &&
+                        x.SpecializationCodes.Count == x.SpecializationTitles.Count))
+            .WithMessage("Количество кодов и названий специализаций должно совпадать.");
         RuleFor(x => x.Degrees).MaximumLength(128);
         RuleFor(x => x.ExperienceYears).GreaterThanOrEqualTo(0).When(x => x.ExperienceYears.HasValue);
         RuleFor(x => x.Languages).MaximumLength(128);

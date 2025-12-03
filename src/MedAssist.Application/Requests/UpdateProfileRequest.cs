@@ -1,9 +1,11 @@
+using System.Collections.Generic;
+
 namespace MedAssist.Application.Requests;
 
 public record UpdateProfileRequest(
     string? DisplayName,
-    string? SpecializationCode,
-    string? SpecializationTitle,
+    IReadOnlyCollection<string>? SpecializationCodes,
+    IReadOnlyCollection<string>? SpecializationTitles,
     string? Degrees,
     int? ExperienceYears,
     string? Languages,

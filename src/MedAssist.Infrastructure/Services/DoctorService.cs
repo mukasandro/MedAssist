@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+using System.Linq;
 using MedAssist.Application.DTOs;
 using MedAssist.Application.Services;
 using MedAssist.Application.Requests;
@@ -28,9 +30,10 @@ public class DoctorService : IDoctorService
         var doctor = await _db.Doctors.FirstOrDefaultAsync(d => d.Id == id, cancellationToken);
         if (doctor == null) return null;
 
+        doctor.Registration ??= new Domain.Entities.Registration();
         doctor.DisplayName = request.DisplayName;
-        doctor.SpecializationCode = request.SpecializationCode;
-        doctor.SpecializationTitle = request.SpecializationTitle;
+        doctor.SpecializationCodes = request.SpecializationCodes.ToList();
+        doctor.SpecializationTitles = request.SpecializationTitles.ToList();
         doctor.Degrees = request.Degrees;
         doctor.ExperienceYears = request.ExperienceYears;
         doctor.Languages = request.Languages;
@@ -42,6 +45,8 @@ public class DoctorService : IDoctorService
         doctor.AvatarUrl = request.AvatarUrl;
         doctor.Verified = request.Verified;
         doctor.Rating = request.Rating;
+        doctor.Registration.SpecializationCodes = doctor.SpecializationCodes.ToList();
+        doctor.Registration.SpecializationTitles = doctor.SpecializationTitles.ToList();
 
         await _db.SaveChangesAsync(cancellationToken);
         return ToDto(doctor);
@@ -56,8 +61,8 @@ public class DoctorService : IDoctorService
         {
             Id = Guid.NewGuid(),
             DisplayName = $"Д-р {faker.Name.LastName()} {faker.Name.FirstName()}",
-            SpecializationCode = "cardiology",
-            SpecializationTitle = "Кардиология",
+            SpecializationCodes = new List<string> { "cardiology" },
+            SpecializationTitles = new List<string> { "Кардиология" },
             Degrees = faker.PickRandom(new[] { "к.м.н.", "д.м.н.", null }),
             ExperienceYears = faker.Random.Int(3, 25),
             Languages = "ru,en",
@@ -73,7 +78,8 @@ public class DoctorService : IDoctorService
             Registration = new Domain.Entities.Registration
             {
                 Status = Domain.Enums.RegistrationStatus.Completed,
-                Specialization = "Кардиология",
+                SpecializationCodes = new List<string> { "cardiology" },
+                SpecializationTitles = new List<string> { "Кардиология" },
                 HumanInLoopConfirmed = true,
                 StartedAt = DateTimeOffset.UtcNow
             }
@@ -93,15 +99,16 @@ public class DoctorService : IDoctorService
             {
                 Id = DefaultDoctorId,
                 DisplayName = "Д-р Тестовый",
-                SpecializationCode = "therapy",
-                SpecializationTitle = "Терапия",
+                SpecializationCodes = new List<string> { "therapy" },
+                SpecializationTitles = new List<string> { "Терапия" },
                 TelegramUsername = "test_doctor",
                 AcceptingNewPatients = true,
                 Languages = "ru",
                 Registration = new Domain.Entities.Registration
                 {
                     Status = Domain.Enums.RegistrationStatus.Completed,
-                    Specialization = "Терапия",
+                    SpecializationCodes = new List<string> { "therapy" },
+                    SpecializationTitles = new List<string> { "Терапия" },
                     HumanInLoopConfirmed = true,
                     StartedAt = DateTimeOffset.UtcNow
                 }
@@ -110,7 +117,11 @@ public class DoctorService : IDoctorService
         }
     }
 
-    private static DoctorPublicDto ToDto(Domain.Entities.Doctor d) =>
-        new(d.Id, d.DisplayName, d.SpecializationCode, d.SpecializationTitle, d.Degrees, d.ExperienceYears, d.Languages, d.Bio,
+    private static DoctorPublicDto ToDto(Domain.Entities.Doctor d)
+    {
+        var codes = d.SpecializationCodes ?? new List<string>();
+        var titles = d.SpecializationTitles ?? new List<string>();
+        return new(d.Id, d.DisplayName, codes.AsReadOnly(), titles.AsReadOnly(), d.Degrees, d.ExperienceYears, d.Languages, d.Bio,
             d.FocusAreas, d.AcceptingNewPatients, d.Location, d.ContactPolicy, d.AvatarUrl, d.Verified, d.Rating);
+    }
 }

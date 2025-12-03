@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+using System.Linq;
 using MedAssist.Application.Abstractions;
 using MedAssist.Application.DTOs;
 using MedAssist.Application.Requests;
@@ -25,8 +27,7 @@ public class RegistrationService : IRegistrationService
         var doctor = await EnsureDoctorAsync(cancellationToken);
 
         doctor.DisplayName = request.DisplayName;
-        doctor.SpecializationCode = request.SpecializationCode;
-        doctor.SpecializationTitle = request.SpecializationTitle;
+        doctor.SpecializationCodes = request.SpecializationCodes.ToList();
         doctor.TelegramUsername = request.TelegramUsername;
         doctor.Degrees = request.Degrees;
         doctor.ExperienceYears = request.ExperienceYears;
@@ -37,7 +38,7 @@ public class RegistrationService : IRegistrationService
         doctor.Location = request.Location;
         doctor.ContactPolicy = request.ContactPolicy;
         doctor.AvatarUrl = request.AvatarUrl;
-        doctor.Registration.Specialization = request.SpecializationTitle;
+        doctor.Registration.SpecializationCodes = doctor.SpecializationCodes.ToList();
         doctor.Registration.HumanInLoopConfirmed = request.HumanInLoopConfirmed;
 
         if (doctor.Registration.Status == RegistrationStatus.NotStarted)
@@ -81,6 +82,8 @@ public class RegistrationService : IRegistrationService
 
         if (doctor != null)
         {
+            doctor.SpecializationCodes ??= new List<string>();
+            doctor.Registration.SpecializationCodes ??= new List<string>();
             return doctor;
         }
 
@@ -96,25 +99,33 @@ public class RegistrationService : IRegistrationService
 
         _db.Doctors.Add(doctor);
         await _db.SaveChangesAsync(cancellationToken);
+        doctor.SpecializationCodes ??= new List<string>();
+        doctor.Registration.SpecializationCodes ??= new List<string>();
         return doctor;
     }
 
     private static RegistrationDto ToDto(Domain.Entities.Doctor doctor)
     {
         var reg = doctor.Registration;
-        return new RegistrationDto(reg.Status, reg.Specialization, reg.HumanInLoopConfirmed, reg.StartedAt,
+        reg.SpecializationCodes ??= new List<string>();
+        return new RegistrationDto(
+            reg.Status,
+            reg.SpecializationCodes.AsReadOnly(),
+            reg.HumanInLoopConfirmed,
+            reg.StartedAt,
             doctor.TelegramUsername);
     }
 
     private static void TryCompleteRegistration(Domain.Entities.Doctor doctor)
     {
         var reg = doctor.Registration;
+        reg.SpecializationCodes ??= new List<string>();
         if (reg.Status == RegistrationStatus.Completed)
         {
             return;
         }
 
-        if (reg.HumanInLoopConfirmed && !string.IsNullOrWhiteSpace(reg.Specialization))
+        if (reg.HumanInLoopConfirmed && reg.SpecializationCodes.Count > 0)
         {
             reg.Status = RegistrationStatus.Completed;
         }

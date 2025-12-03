@@ -1,9 +1,10 @@
+using System.Collections.Generic;
+
 namespace MedAssist.Application.Requests;
 
 public record UpsertRegistrationRequest(
     string DisplayName,
-    string SpecializationCode,
-    string SpecializationTitle,
+    IReadOnlyCollection<string> SpecializationCodes,
     string TelegramUsername,
     string? Degrees,
     int? ExperienceYears,

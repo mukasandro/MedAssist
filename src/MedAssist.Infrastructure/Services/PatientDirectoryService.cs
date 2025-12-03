@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using MedAssist.Application.DTOs;
 using MedAssist.Application.Requests;
 using MedAssist.Application.Services;
@@ -85,15 +86,16 @@ public class PatientDirectoryService : IPatientDirectoryService
             {
                 Id = defId,
                 DisplayName = "Д-р Тестовый",
-                SpecializationCode = "therapy",
-                SpecializationTitle = "Терапия",
+                SpecializationCodes = new List<string> { "therapy" },
+                SpecializationTitles = new List<string> { "Терапия" },
                 TelegramUsername = "test_doctor",
                 AcceptingNewPatients = true,
                 Languages = "ru",
                 Registration = new Domain.Entities.Registration
                 {
                     Status = Domain.Enums.RegistrationStatus.Completed,
-                    Specialization = "Терапия",
+                    SpecializationCodes = new List<string> { "therapy" },
+                    SpecializationTitles = new List<string> { "Терапия" },
                     HumanInLoopConfirmed = true,
                     StartedAt = DateTimeOffset.UtcNow
                 }

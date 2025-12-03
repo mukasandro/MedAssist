@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using MedAssist.Domain.Enums;
 
 namespace MedAssist.Domain.Entities;
@@ -8,8 +9,8 @@ public class Doctor
 
     // Публичная карточка
     public string DisplayName { get; set; } = string.Empty;
-    public string SpecializationCode { get; set; } = string.Empty;
-    public string SpecializationTitle { get; set; } = string.Empty;
+    public List<string> SpecializationCodes { get; set; } = new();
+    public List<string> SpecializationTitles { get; set; } = new();
     public string TelegramUsername { get; set; } = string.Empty;
     public string? Degrees { get; set; }
     public int? ExperienceYears { get; set; }
