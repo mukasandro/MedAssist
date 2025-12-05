@@ -72,11 +72,13 @@ export const ApiClient = {
   getDoctors: () => api.get<DoctorPublicDto[]>('/v1/doctors').then((r) => r.data),
   updateDoctor: (id: string, payload: UpdateDoctorRequest) =>
     api.put<DoctorPublicDto>(`/v1/doctors/${id}`, payload).then((r) => r.data),
+  deleteDoctor: (id: string) => api.delete(`/v1/doctors/${id}`),
 
   // Patient directory
   getPatientsDirectory: () => api.get<PatientDirectoryDto[]>('/v1/patient-directory').then((r) => r.data),
   updatePatientDirectory: (id: string, payload: UpdatePatientDirectoryRequest) =>
     api.put<PatientDirectoryDto>(`/v1/patient-directory/${id}`, payload).then((r) => r.data),
+  deletePatientDirectory: (id: string) => api.delete(`/v1/patient-directory/${id}`),
   createPatientDirectoryTest: () => api.post<PatientDirectoryDto>('/v1/patient-directory/test', {}).then((r) => r.data),
   createDoctorTest: () => api.post<DoctorPublicDto>('/v1/doctors/test', {}).then((r) => r.data),
 }

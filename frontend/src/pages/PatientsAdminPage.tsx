@@ -78,6 +78,18 @@ export default function PatientsAdminPage() {
     },
   })
 
+  const deleteMutation = useMutation({
+    mutationFn: async (ids: string[]) => {
+      await Promise.all(ids.map((id) => ApiClient.deletePatientDirectory(id)))
+    },
+    onSuccess: () => {
+      setSelectedIds([])
+      setEditorOpen(false)
+      setForm(null)
+      queryClient.invalidateQueries({ queryKey: ['admin-patients'] })
+    },
+  })
+
   const openPatient = (id: string) => {
     const p = patients?.find((x) => x.id === id)
     if (!p) return
@@ -110,7 +122,11 @@ export default function PatientsAdminPage() {
             <Button variant="secondary" onClick={() => createTestMutation.mutate()}>
               Тестовый пациент
             </Button>
-            <Button variant="danger" disabled={selectedIds.length === 0}>
+            <Button
+              variant="danger"
+              disabled={selectedIds.length === 0 || deleteMutation.isPending}
+              onClick={() => deleteMutation.mutate(selectedIds)}
+            >
               Удалить
             </Button>
           </div>

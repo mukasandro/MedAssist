@@ -76,6 +76,22 @@ public class PatientDirectoryService : IPatientDirectoryService
         return ToDto(patient);
     }
 
+    public async Task DeleteAsync(Guid id, CancellationToken cancellationToken)
+    {
+        var patient = await _db.Patients.FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
+        if (patient != null)
+        {
+            var dialogs = _db.Dialogs.Where(d => d.PatientId == id);
+            var dialogIds = dialogs.Select(d => d.Id);
+            var messages = _db.Messages.Where(m => dialogIds.Contains(m.DialogId));
+
+            _db.Messages.RemoveRange(messages);
+            _db.Dialogs.RemoveRange(dialogs);
+            _db.Patients.Remove(patient);
+            await _db.SaveChangesAsync(cancellationToken);
+        }
+    }
+
     private async Task EnsureDefaultDoctorAsync(CancellationToken cancellationToken)
     {
         var defId = Guid.Parse("11111111-1111-1111-1111-111111111111");

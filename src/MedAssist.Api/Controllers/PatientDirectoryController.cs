@@ -36,6 +36,15 @@ public class PatientDirectoryController : ControllerBase
         return updated is null ? NotFound() : Ok(updated);
     }
 
+    [HttpDelete("{id:guid}")]
+    [SwaggerOperation(Summary = "Удалить пациента", Description = "Удаляет пациента из справочника.")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
+    {
+        await _patientService.DeleteAsync(id, cancellationToken);
+        return NoContent();
+    }
+
     [HttpPost("test")]
     [SwaggerOperation(Summary = "Создать тестового пациента", Description = "Генерирует пациента с рандомными данными (Bogus).")]
     [ProducesResponseType(typeof(PatientDirectoryDto), StatusCodes.Status200OK)]

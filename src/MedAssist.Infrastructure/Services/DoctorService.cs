@@ -61,6 +61,25 @@ public class DoctorService : IDoctorService
         return ToDto(doctor);
     }
 
+    public async Task DeleteAsync(Guid id, CancellationToken cancellationToken)
+    {
+        var doctor = await _db.Doctors.FirstOrDefaultAsync(d => d.Id == id, cancellationToken);
+        if (doctor == null) return;
+
+        var dialogIds = await _db.Dialogs.Where(d => d.DoctorId == id).Select(d => d.Id).ToListAsync(cancellationToken);
+        var messages = _db.Messages.Where(m => dialogIds.Contains(m.DialogId));
+        _db.Messages.RemoveRange(messages);
+
+        var dialogs = _db.Dialogs.Where(d => d.DoctorId == id);
+        _db.Dialogs.RemoveRange(dialogs);
+
+        var patients = _db.Patients.Where(p => p.DoctorId == id);
+        _db.Patients.RemoveRange(patients);
+
+        _db.Doctors.Remove(doctor);
+        await _db.SaveChangesAsync(cancellationToken);
+    }
+
     public async Task<DoctorPublicDto> CreateRandomAsync(CancellationToken cancellationToken)
     {
         await EnsureDefaultDoctorAsync(cancellationToken);
