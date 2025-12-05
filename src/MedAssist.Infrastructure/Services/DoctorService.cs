@@ -31,9 +31,18 @@ public class DoctorService : IDoctorService
         if (doctor == null) return null;
 
         doctor.Registration ??= new Domain.Entities.Registration();
+        doctor.SpecializationCodes ??= new List<string>();
+        doctor.SpecializationTitles ??= new List<string>();
+
         doctor.DisplayName = request.DisplayName;
-        doctor.SpecializationCodes = request.SpecializationCodes.ToList();
-        doctor.SpecializationTitles = request.SpecializationTitles.ToList();
+        if (request.SpecializationCodes is not null)
+        {
+            doctor.SpecializationCodes = request.SpecializationCodes.ToList();
+        }
+        if (request.SpecializationTitles is not null)
+        {
+            doctor.SpecializationTitles = request.SpecializationTitles.ToList();
+        }
         doctor.Degrees = request.Degrees;
         doctor.ExperienceYears = request.ExperienceYears;
         doctor.Languages = request.Languages;

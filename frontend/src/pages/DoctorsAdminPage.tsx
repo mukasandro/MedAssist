@@ -10,12 +10,30 @@ import { Textarea } from '../components/Textarea'
 import { Toggle } from '../components/Toggle'
 import { Modal } from '../components/Modal'
 
+type DoctorForm = {
+  id: string
+  displayName: string
+  specializationCode: string
+  specializationTitle: string
+  degrees?: string | null
+  experienceYears?: number | null
+  languages?: string | null
+  bio?: string | null
+  focusAreas?: string | null
+  acceptingNewPatients: boolean
+  location?: string | null
+  contactPolicy?: string | null
+  avatarUrl?: string | null
+  verified: boolean
+  rating?: number | null
+}
+
 export default function DoctorsAdminPage() {
   const queryClient = useQueryClient()
   const { data: doctors, isLoading, error } = useQuery({ queryKey: ['admin-doctors'], queryFn: ApiClient.getDoctors })
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [editorOpen, setEditorOpen] = useState(false)
-  const [form, setForm] = useState<DoctorPublicDto | null>(null)
+  const [form, setForm] = useState<DoctorForm | null>(null)
   const [saveMessage, setSaveMessage] = useState<string | null>(null)
   const testMutation = useMutation({
     mutationFn: ApiClient.createDoctorTest,
@@ -60,7 +78,23 @@ export default function DoctorsAdminPage() {
     const doc = doctors?.find((d) => d.id === id)
     if (!doc) return
     setSelectedIds((prev) => (prev.includes(id) ? prev : [...prev, id]))
-    setForm(doc)
+    setForm({
+      id: doc.id,
+      displayName: doc.displayName,
+      specializationCode: doc.specializationCodes?.[0] ?? '',
+      specializationTitle: doc.specializationTitles?.[0] ?? '',
+      degrees: doc.degrees,
+      experienceYears: doc.experienceYears,
+      languages: doc.languages,
+      bio: doc.bio,
+      focusAreas: doc.focusAreas,
+      acceptingNewPatients: doc.acceptingNewPatients,
+      location: doc.location,
+      contactPolicy: doc.contactPolicy,
+      avatarUrl: doc.avatarUrl,
+      verified: doc.verified,
+      rating: doc.rating,
+    })
     setEditorOpen(true)
   }
 
@@ -68,7 +102,7 @@ export default function DoctorsAdminPage() {
     setSelectedIds((prev) => (checked ? [...prev, id] : prev.filter((x) => x !== id)))
   }
 
-  const handleChange = (key: keyof DoctorPublicDto, value: any) => {
+  const handleChange = (key: keyof DoctorForm, value: any) => {
     setForm((prev) => (prev ? { ...prev, [key]: value } : prev))
   }
 
@@ -131,7 +165,7 @@ export default function DoctorsAdminPage() {
                       />
                     </td>
                     <td className="px-3 py-2 font-medium text-textPrimary">{d.displayName}</td>
-                    <td className="px-3 py-2 text-textSecondary">{d.specializationTitle}</td>
+                    <td className="px-3 py-2 text-textSecondary">{d.specializationTitles?.[0] ?? '—'}</td>
                     <td className="px-3 py-2 text-textSecondary">{d.experienceYears ?? '—'}</td>
                     <td className="px-3 py-2 text-textSecondary">{d.languages ?? '—'}</td>
                     <td className="px-3 py-2">
@@ -165,10 +199,12 @@ export default function DoctorsAdminPage() {
               disabled={!form || form.id === 'new' || updateMutation.isPending}
               onClick={() => {
                 if (!form || form.id === 'new') return
+                const code = form.specializationCode.trim()
+                const title = form.specializationTitle.trim()
                 const payload: UpdateDoctorRequest = {
                   displayName: form.displayName,
-                  specializationCode: form.specializationCode,
-                  specializationTitle: form.specializationTitle,
+                  specializationCodes: code && title ? [code] : [],
+                  specializationTitles: code && title ? [title] : [],
                   degrees: form.degrees,
                   experienceYears: form.experienceYears,
                   languages: form.languages,

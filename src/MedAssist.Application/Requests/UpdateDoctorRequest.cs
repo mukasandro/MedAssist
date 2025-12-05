@@ -4,8 +4,8 @@ namespace MedAssist.Application.Requests;
 
 public record UpdateDoctorRequest(
     string DisplayName,
-    IReadOnlyCollection<string> SpecializationCodes,
-    IReadOnlyCollection<string> SpecializationTitles,
+    IReadOnlyCollection<string>? SpecializationCodes,
+    IReadOnlyCollection<string>? SpecializationTitles,
     string? Degrees,
     int? ExperienceYears,
     string? Languages,

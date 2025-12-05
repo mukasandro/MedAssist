@@ -5,7 +5,7 @@ export type PatientStatus = 0 | 1 // Inactive=0, Active=1
 
 export interface RegistrationDto {
   status: RegistrationStatus
-  specialization: string | null
+  specializationCodes: string[]
   humanInLoopConfirmed: boolean
   startedAt?: string | null
   telegramUsername: string
@@ -13,8 +13,7 @@ export interface RegistrationDto {
 
 export interface UpsertRegistrationRequest {
   displayName: string
-  specializationCode: string
-  specializationTitle: string
+  specializationCodes: string[]
   telegramUsername: string
   degrees?: string | null
   experienceYears?: number | null
@@ -31,8 +30,8 @@ export interface UpsertRegistrationRequest {
 export interface ProfileDto {
   doctorId: string
   displayName: string
-  specializationCode: string
-  specializationTitle: string
+  specializationCodes: string[]
+  specializationTitles: string[]
   telegramUsername: string
   degrees?: string | null
   experienceYears?: number | null
@@ -51,8 +50,8 @@ export interface ProfileDto {
 
 export interface UpdateProfileRequest {
   displayName?: string | null
-  specializationCode?: string | null
-  specializationTitle?: string | null
+  specializationCodes?: string[] | null
+  specializationTitles?: string[] | null
   degrees?: string | null
   experienceYears?: number | null
   languages?: string | null
@@ -132,8 +131,8 @@ export interface SpecializationDto {
 export interface DoctorPublicDto {
   id: string
   displayName: string
-  specializationCode: string
-  specializationTitle: string
+  specializationCodes: string[]
+  specializationTitles: string[]
   degrees?: string | null
   experienceYears?: number | null
   languages?: string | null
@@ -149,8 +148,8 @@ export interface DoctorPublicDto {
 
 export interface UpdateDoctorRequest {
   displayName: string
-  specializationCode: string
-  specializationTitle: string
+  specializationCodes?: string[] | null
+  specializationTitles?: string[] | null
   degrees?: string | null
   experienceYears?: number | null
   languages?: string | null
