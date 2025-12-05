@@ -57,15 +57,15 @@ public static class DatabaseInitializer
     {
         const string sql = @"
             ALTER TABLE IF EXISTS ""Doctors""
-            ADD COLUMN IF NOT EXISTS ""SpecializationCodes"" text[] DEFAULT '{}'::text[],
-            ADD COLUMN IF NOT EXISTS ""SpecializationTitles"" text[] DEFAULT '{}'::text[],
-            ADD COLUMN IF NOT EXISTS ""Registration_SpecializationCodes"" text[] DEFAULT '{}'::text[],
-            ADD COLUMN IF NOT EXISTS ""Registration_SpecializationTitles"" text[] DEFAULT '{}'::text[];
+            ADD COLUMN IF NOT EXISTS ""SpecializationCodes"" text[] DEFAULT ARRAY[]::text[],
+            ADD COLUMN IF NOT EXISTS ""SpecializationTitles"" text[] DEFAULT ARRAY[]::text[],
+            ADD COLUMN IF NOT EXISTS ""Registration_SpecializationCodes"" text[] DEFAULT ARRAY[]::text[],
+            ADD COLUMN IF NOT EXISTS ""Registration_SpecializationTitles"" text[] DEFAULT ARRAY[]::text[];
 
-            UPDATE ""Doctors"" SET ""SpecializationCodes"" = '{}' WHERE ""SpecializationCodes"" IS NULL;
-            UPDATE ""Doctors"" SET ""SpecializationTitles"" = '{}' WHERE ""SpecializationTitles"" IS NULL;
-            UPDATE ""Doctors"" SET ""Registration_SpecializationCodes"" = '{}' WHERE ""Registration_SpecializationCodes"" IS NULL;
-            UPDATE ""Doctors"" SET ""Registration_SpecializationTitles"" = '{}' WHERE ""Registration_SpecializationTitles"" IS NULL;
+            UPDATE ""Doctors"" SET ""SpecializationCodes"" = ARRAY[]::text[] WHERE ""SpecializationCodes"" IS NULL;
+            UPDATE ""Doctors"" SET ""SpecializationTitles"" = ARRAY[]::text[] WHERE ""SpecializationTitles"" IS NULL;
+            UPDATE ""Doctors"" SET ""Registration_SpecializationCodes"" = ARRAY[]::text[] WHERE ""Registration_SpecializationCodes"" IS NULL;
+            UPDATE ""Doctors"" SET ""Registration_SpecializationTitles"" = ARRAY[]::text[] WHERE ""Registration_SpecializationTitles"" IS NULL;
         ";
 
         await dbContext.Database.ExecuteSqlRawAsync(sql, cancellationToken);
