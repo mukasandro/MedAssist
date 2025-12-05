@@ -57,6 +57,9 @@ public static class DatabaseInitializer
     {
         const string sql = @"
             ALTER TABLE IF EXISTS ""Doctors""
+            DROP COLUMN IF EXISTS ""SpecializationCode"";
+
+            ALTER TABLE IF EXISTS ""Doctors""
             ADD COLUMN IF NOT EXISTS ""SpecializationCodes"" text[] DEFAULT ARRAY[]::text[],
             ADD COLUMN IF NOT EXISTS ""SpecializationTitles"" text[] DEFAULT ARRAY[]::text[],
             ADD COLUMN IF NOT EXISTS ""Registration_SpecializationCodes"" text[] DEFAULT ARRAY[]::text[],
