@@ -6,26 +6,16 @@ import { Button } from '../components/Button'
 import { ApiClient } from '../api/client'
 import type { DoctorPublicDto, UpdateDoctorRequest } from '../api/types'
 import { Input } from '../components/Input'
-import { Textarea } from '../components/Textarea'
 import { Toggle } from '../components/Toggle'
 import { Modal } from '../components/Modal'
 
 type DoctorForm = {
   id: string
-  displayName: string
   specializationCode: string
   specializationTitle: string
-  degrees?: string | null
-  experienceYears?: number | null
-  languages?: string | null
-  bio?: string | null
-  focusAreas?: string | null
-  acceptingNewPatients: boolean
-  location?: string | null
-  contactPolicy?: string | null
-  avatarUrl?: string | null
+  telegramUserId?: number | null
+  nickname?: string | null
   verified: boolean
-  rating?: number | null
 }
 
 export default function DoctorsAdminPage() {
@@ -68,20 +58,11 @@ export default function DoctorsAdminPage() {
     setSelectedIds([])
     setForm({
       id: 'new',
-      displayName: '',
       specializationCode: '',
       specializationTitle: '',
-      degrees: '',
-      experienceYears: 0,
-      languages: '',
-      bio: '',
-      focusAreas: '',
-      acceptingNewPatients: true,
-      location: '',
-      contactPolicy: '',
-      avatarUrl: '',
+      telegramUserId: null,
+      nickname: '',
       verified: false,
-      rating: null,
     })
     setEditorOpen(true)
   }
@@ -92,20 +73,11 @@ export default function DoctorsAdminPage() {
     setSelectedIds((prev) => (prev.includes(id) ? prev : [...prev, id]))
     setForm({
       id: doc.id,
-      displayName: doc.displayName,
       specializationCode: doc.specializationCodes?.[0] ?? '',
       specializationTitle: doc.specializationTitles?.[0] ?? '',
-      degrees: doc.degrees,
-      experienceYears: doc.experienceYears,
-      languages: doc.languages,
-      bio: doc.bio,
-      focusAreas: doc.focusAreas,
-      acceptingNewPatients: doc.acceptingNewPatients,
-      location: doc.location,
-      contactPolicy: doc.contactPolicy,
-      avatarUrl: doc.avatarUrl,
+      telegramUserId: doc.telegramUserId ?? null,
+      nickname: doc.nickname ?? '',
       verified: doc.verified,
-      rating: doc.rating,
     })
     setEditorOpen(true)
   }
@@ -157,11 +129,11 @@ export default function DoctorsAdminPage() {
               <thead className="bg-surface text-left uppercase text-xs font-semibold text-textSecondary">
                 <tr>
                   <th className="px-3 py-2 w-10"></th>
-                  <th className="px-3 py-2">Имя</th>
+                  <th className="px-3 py-2">ID</th>
+                  <th className="px-3 py-2">Telegram ID</th>
+                  <th className="px-3 py-2">Никнейм</th>
                   <th className="px-3 py-2">Специализация</th>
-                  <th className="px-3 py-2">Стаж</th>
-                  <th className="px-3 py-2">Языки</th>
-                  <th className="px-3 py-2">Статус</th>
+                  <th className="px-3 py-2">Верификация</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/60">
@@ -170,7 +142,7 @@ export default function DoctorsAdminPage() {
                     key={d.id}
                     className="cursor-pointer hover:bg-accentMuted"
                     onClick={() => openDoctor(d.id)}
-                    aria-label={`Открыть врача ${d.displayName}`}
+                    aria-label={`Открыть врача ${d.id}`}
                   >
                     <td className="px-3 py-2">
                       <input
@@ -180,14 +152,14 @@ export default function DoctorsAdminPage() {
                         onChange={(e) => toggleSelect(d.id, e.currentTarget.checked)}
                       />
                     </td>
-                    <td className="px-3 py-2 font-medium text-textPrimary">{d.displayName}</td>
+                    <td className="px-3 py-2 font-medium text-textPrimary">{d.id}</td>
+                    <td className="px-3 py-2 text-textSecondary">{d.telegramUserId ?? '—'}</td>
+                    <td className="px-3 py-2 text-textSecondary">{d.nickname ?? '—'}</td>
                     <td className="px-3 py-2 text-textSecondary">{d.specializationTitles?.[0] ?? '—'}</td>
-                    <td className="px-3 py-2 text-textSecondary">{d.experienceYears ?? '—'}</td>
-                    <td className="px-3 py-2 text-textSecondary">{d.languages ?? '—'}</td>
                     <td className="px-3 py-2">
                       <Badge
-                        label={d.acceptingNewPatients ? 'Принимает новых' : 'Закрыт'}
-                        tone={d.acceptingNewPatients ? 'success' : 'warning'}
+                        label={d.verified ? 'Верифицирован' : 'Не верифицирован'}
+                        tone={d.verified ? 'success' : 'warning'}
                       />
                     </td>
                   </tr>
@@ -204,7 +176,7 @@ export default function DoctorsAdminPage() {
           setEditorOpen(false)
           setSelectedIds([])
         }}
-        title={form?.id === 'new' ? 'Новый врач' : `Редактирование: ${form?.displayName ?? ''}`}
+        title={form?.id === 'new' ? 'Новый врач' : `Редактирование: ${form?.id ?? ''}`}
         footer={
           <>
             <Button variant="secondary" onClick={() => setEditorOpen(false)}>
@@ -218,20 +190,10 @@ export default function DoctorsAdminPage() {
                 const code = form.specializationCode.trim()
                 const title = form.specializationTitle.trim()
                 const payload: UpdateDoctorRequest = {
-                  displayName: form.displayName,
                   specializationCodes: code && title ? [code] : [],
                   specializationTitles: code && title ? [title] : [],
-                  degrees: form.degrees,
-                  experienceYears: form.experienceYears,
-                  languages: form.languages,
-                  bio: form.bio,
-                  focusAreas: form.focusAreas,
-                  acceptingNewPatients: form.acceptingNewPatients,
-                  location: form.location,
-                  contactPolicy: form.contactPolicy,
-                  avatarUrl: form.avatarUrl,
+                  nickname: form.nickname ?? null,
                   verified: form.verified,
-                  rating: form.rating,
                 }
                 updateMutation.mutate({ id: form.id, body: payload })
               }}
@@ -243,7 +205,6 @@ export default function DoctorsAdminPage() {
       >
         {form ? (
           <div className="grid gap-3 md:grid-cols-2">
-            <Input label="Имя" value={form.displayName} onChange={(e) => handleChange('displayName', e.currentTarget.value)} />
             <Input
               label="Специализация"
               value={form.specializationTitle}
@@ -254,40 +215,11 @@ export default function DoctorsAdminPage() {
               value={form.specializationCode}
               onChange={(e) => handleChange('specializationCode', e.currentTarget.value)}
             />
-            <Input
-              label="Стаж"
-              type="number"
-              value={form.experienceYears ?? ''}
-              onChange={(e) => handleChange('experienceYears', Number(e.currentTarget.value))}
-            />
-            <Input label="Языки" value={form.languages ?? ''} onChange={(e) => handleChange('languages', e.currentTarget.value)} />
-            <Textarea label="Био" value={form.bio ?? ''} onChange={(e) => handleChange('bio', e.currentTarget.value)} />
-            <Input label="Фокусы" value={form.focusAreas ?? ''} onChange={(e) => handleChange('focusAreas', e.currentTarget.value)} />
-            <Input label="Локация" value={form.location ?? ''} onChange={(e) => handleChange('location', e.currentTarget.value)} />
-            <Input
-              label="Политика контакта"
-              value={form.contactPolicy ?? ''}
-              onChange={(e) => handleChange('contactPolicy', e.currentTarget.value)}
-            />
-            <Input
-              label="Аватар URL"
-              value={form.avatarUrl ?? ''}
-              onChange={(e) => handleChange('avatarUrl', e.currentTarget.value)}
-            />
+            <Input label="Telegram ID" value={form.telegramUserId ?? ''} readOnly />
+            <Input label="Никнейм" value={form.nickname ?? ''} onChange={(e) => handleChange('nickname', e.currentTarget.value)} />
             <div className="flex items-center gap-3">
-              <Toggle
-                label="Принимает новых"
-                checked={form.acceptingNewPatients}
-                onChange={(e) => handleChange('acceptingNewPatients', e.currentTarget.checked)}
-              />
               <Toggle label="Верифицирован" checked={form.verified} onChange={(e) => handleChange('verified', e.currentTarget.checked)} />
             </div>
-            <Input
-              label="Рейтинг"
-              type="number"
-              value={form.rating ?? ''}
-              onChange={(e) => handleChange('rating', Number(e.currentTarget.value))}
-            />
             {saveMessage && <div className="text-sm text-green-600">{saveMessage}</div>}
           </div>
         ) : (

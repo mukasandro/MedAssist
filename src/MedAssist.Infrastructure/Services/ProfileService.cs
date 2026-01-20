@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using System.Linq;
-using MedAssist.Application.Abstractions;
 using MedAssist.Application.DTOs;
 using MedAssist.Application.Requests;
 using MedAssist.Application.Services;
@@ -14,27 +13,36 @@ namespace MedAssist.Infrastructure.Services;
 public class ProfileService : IProfileService
 {
     private readonly MedAssistDbContext _db;
-    private readonly ICurrentUserContext _currentUser;
+    private readonly IReferenceService _referenceService;
 
-    public ProfileService(MedAssistDbContext db, ICurrentUserContext currentUser)
+    public ProfileService(
+        MedAssistDbContext db,
+        IReferenceService referenceService)
     {
         _db = db;
-        _currentUser = currentUser;
+        _referenceService = referenceService;
     }
 
-    public async Task<ProfileDto> GetAsync(CancellationToken cancellationToken)
+    public async Task<ProfileDto?> GetAsync(long telegramUserId, CancellationToken cancellationToken)
     {
-        var doctor = await EnsureDoctorAsync(cancellationToken);
-        return ToDto(doctor);
+        var doctor = await EnsureDoctorAsync(telegramUserId, cancellationToken);
+        return doctor is null ? null : ToDto(doctor);
     }
 
-    public async Task<ProfileDto> UpdateAsync(UpdateProfileRequest request, CancellationToken cancellationToken)
+    public async Task<ProfileDto?> UpdateAsync(
+        long telegramUserId,
+        UpdateProfileRequest request,
+        CancellationToken cancellationToken)
     {
-        var doctor = await EnsureDoctorAsync(cancellationToken);
+        var doctor = await EnsureDoctorAsync(telegramUserId, cancellationToken);
+        if (doctor is null)
+        {
+            return null;
+        }
+
         doctor.Registration ??= new Registration();
         doctor.SpecializationCodes ??= new List<string>();
         doctor.SpecializationTitles ??= new List<string>();
-        doctor.DisplayName = request.DisplayName ?? doctor.DisplayName;
         if (request.SpecializationCodes is not null)
         {
             doctor.SpecializationCodes = request.SpecializationCodes.ToList();
@@ -46,15 +54,10 @@ public class ProfileService : IProfileService
             doctor.SpecializationTitles = request.SpecializationTitles.ToList();
             doctor.Registration.SpecializationTitles = doctor.SpecializationTitles.ToList();
         }
-        doctor.Degrees = request.Degrees ?? doctor.Degrees;
-        doctor.ExperienceYears = request.ExperienceYears ?? doctor.ExperienceYears;
-        doctor.Languages = request.Languages ?? doctor.Languages;
-        doctor.Bio = request.Bio ?? doctor.Bio;
-        doctor.FocusAreas = request.FocusAreas ?? doctor.FocusAreas;
-        doctor.AcceptingNewPatients = request.AcceptingNewPatients ?? doctor.AcceptingNewPatients;
-        doctor.Location = request.Location ?? doctor.Location;
-        doctor.ContactPolicy = request.ContactPolicy ?? doctor.ContactPolicy;
-        doctor.AvatarUrl = request.AvatarUrl ?? doctor.AvatarUrl;
+        if (request.Nickname is not null)
+        {
+            doctor.Registration.Nickname = request.Nickname;
+        }
 
         if (request.LastSelectedPatientId.HasValue)
         {
@@ -68,11 +71,42 @@ public class ProfileService : IProfileService
         return ToDto(doctor);
     }
 
-    private async Task<Domain.Entities.Doctor> EnsureDoctorAsync(CancellationToken cancellationToken)
+    public async Task<ProfileDto?> UpdateSpecializationAsync(
+        long telegramUserId,
+        UpdateSpecializationRequest request,
+        CancellationToken cancellationToken)
     {
-        var doctorId = _currentUser.GetCurrentUserId();
+        var doctor = await EnsureDoctorAsync(telegramUserId, cancellationToken);
+        if (doctor is null)
+        {
+            return null;
+        }
+
+        var specialization = await GetSpecializationAsync(request.Code, cancellationToken);
+        if (specialization is null)
+        {
+            throw new InvalidOperationException("Specialization code not found.");
+        }
+
+        doctor.Registration ??= new Registration();
+        doctor.SpecializationCodes = new List<string> { specialization.Code };
+        doctor.SpecializationTitles = new List<string> { specialization.Title };
+        doctor.Registration.SpecializationCodes = doctor.SpecializationCodes.ToList();
+        doctor.Registration.SpecializationTitles = doctor.SpecializationTitles.ToList();
+
+        await _db.SaveChangesAsync(cancellationToken);
+        return ToDto(doctor);
+    }
+
+    private async Task<Domain.Entities.Doctor?> EnsureDoctorAsync(long telegramUserId, CancellationToken cancellationToken)
+    {
+        if (telegramUserId <= 0)
+        {
+            return null;
+        }
+
         var doctor = await _db.Doctors.Include(d => d.Registration)
-            .FirstOrDefaultAsync(d => d.Id == doctorId, cancellationToken);
+            .FirstOrDefaultAsync(d => d.TelegramUserId == telegramUserId, cancellationToken);
 
         if (doctor != null)
         {
@@ -83,12 +117,12 @@ public class ProfileService : IProfileService
 
         doctor = new Domain.Entities.Doctor
         {
-            Id = doctorId,
+            Id = Guid.NewGuid(),
+            TelegramUserId = telegramUserId,
             Registration = new Registration
             {
                 Status = RegistrationStatus.NotStarted
-            },
-            AcceptingNewPatients = true
+            }
         };
 
         _db.Doctors.Add(doctor);
@@ -100,26 +134,28 @@ public class ProfileService : IProfileService
 
     private static ProfileDto ToDto(Domain.Entities.Doctor doctor)
     {
+        doctor.Registration ??= new Registration();
         var codes = doctor.SpecializationCodes ?? new List<string>();
         var titles = doctor.SpecializationTitles ?? new List<string>();
         return new(
             doctor.Id,
-            doctor.DisplayName,
             codes.AsReadOnly(),
             titles.AsReadOnly(),
-            doctor.TelegramUsername,
-            doctor.Degrees,
-            doctor.ExperienceYears,
-            doctor.Languages,
-            doctor.Bio,
-            doctor.FocusAreas,
-            doctor.AcceptingNewPatients,
-            doctor.Location,
-            doctor.ContactPolicy,
-            doctor.AvatarUrl,
-            doctor.RegistrationStatus,
+            doctor.TelegramUserId,
+            doctor.Registration.Nickname,
             doctor.LastSelectedPatientId,
-            doctor.Verified,
-            doctor.Rating);
+            doctor.Verified);
+    }
+
+    private async Task<SpecializationDto?> GetSpecializationAsync(string code, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(code))
+        {
+            return null;
+        }
+
+        var specializations = await _referenceService.GetSpecializationsAsync(cancellationToken);
+        return specializations.FirstOrDefault(s =>
+            string.Equals(s.Code, code.Trim(), StringComparison.OrdinalIgnoreCase));
     }
 }

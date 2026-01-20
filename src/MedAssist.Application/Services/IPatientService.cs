@@ -5,9 +5,9 @@ namespace MedAssist.Application.Services;
 
 public interface IPatientService
 {
-    Task<IReadOnlyCollection<PatientDto>> GetListAsync(CancellationToken cancellationToken);
-    Task<PatientDto?> GetAsync(Guid id, CancellationToken cancellationToken);
-    Task<PatientDto> CreateAsync(CreatePatientRequest request, CancellationToken cancellationToken);
-    Task DeleteAsync(Guid id, CancellationToken cancellationToken);
-    Task<ProfileDto> SelectAsync(Guid id, CancellationToken cancellationToken);
+    Task<IReadOnlyCollection<PatientDto>> GetListAsync(long telegramUserId, CancellationToken cancellationToken);
+    Task<PatientDto?> GetAsync(long telegramUserId, Guid id, CancellationToken cancellationToken);
+    Task<PatientDto?> CreateAsync(long telegramUserId, CreatePatientRequest request, CancellationToken cancellationToken);
+    Task DeleteAsync(long telegramUserId, Guid id, CancellationToken cancellationToken);
+    Task<ProfileDto?> SelectAsync(long telegramUserId, Guid id, CancellationToken cancellationToken);
 }

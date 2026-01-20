@@ -8,24 +8,13 @@ public class Doctor
     public Guid Id { get; init; }
 
     // Публичная карточка
-    public string DisplayName { get; set; } = string.Empty;
     public List<string> SpecializationCodes { get; set; } = new();
     public List<string> SpecializationTitles { get; set; } = new();
-    public string TelegramUsername { get; set; } = string.Empty;
-    public string? Degrees { get; set; }
-    public int? ExperienceYears { get; set; }
-    public string? Languages { get; set; }
-    public string? Bio { get; set; }
-    public string? FocusAreas { get; set; }
-    public bool AcceptingNewPatients { get; set; } = true;
-    public string? Location { get; set; }
-    public string? ContactPolicy { get; set; }
-    public string? AvatarUrl { get; set; }
+    public long? TelegramUserId { get; set; }
 
     // Статусы и служебное
     public Registration Registration { get; set; } = new();
     public bool Verified { get; set; }
-    public double? Rating { get; set; }
     public DateTimeOffset? RegisteredAt { get; set; }
     public DateTimeOffset? LastActiveAt { get; set; }
 

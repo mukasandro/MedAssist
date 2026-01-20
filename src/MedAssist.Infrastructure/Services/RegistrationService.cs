@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using System.Linq;
-using MedAssist.Application.Abstractions;
 using MedAssist.Application.DTOs;
 using MedAssist.Application.Requests;
 using MedAssist.Application.Services;
@@ -14,32 +13,21 @@ namespace MedAssist.Infrastructure.Services;
 public class RegistrationService : IRegistrationService
 {
     private readonly MedAssistDbContext _db;
-    private readonly ICurrentUserContext _currentUser;
 
-    public RegistrationService(MedAssistDbContext db, ICurrentUserContext currentUser)
+    public RegistrationService(MedAssistDbContext db)
     {
         _db = db;
-        _currentUser = currentUser;
     }
 
     public async Task<RegistrationDto> UpsertAsync(UpsertRegistrationRequest request, CancellationToken cancellationToken)
     {
-        var doctor = await EnsureDoctorAsync(cancellationToken);
+        var doctor = await EnsureDoctorAsync(request.TelegramUserId, cancellationToken);
 
-        doctor.DisplayName = request.DisplayName;
         doctor.SpecializationCodes = request.SpecializationCodes.ToList();
-        doctor.TelegramUsername = request.TelegramUsername;
-        doctor.Degrees = request.Degrees;
-        doctor.ExperienceYears = request.ExperienceYears;
-        doctor.Languages = request.Languages;
-        doctor.Bio = request.Bio;
-        doctor.FocusAreas = request.FocusAreas;
-        doctor.AcceptingNewPatients = request.AcceptingNewPatients;
-        doctor.Location = request.Location;
-        doctor.ContactPolicy = request.ContactPolicy;
-        doctor.AvatarUrl = request.AvatarUrl;
+        doctor.TelegramUserId = request.TelegramUserId;
         doctor.Registration.SpecializationCodes = doctor.SpecializationCodes.ToList();
-        doctor.Registration.HumanInLoopConfirmed = request.HumanInLoopConfirmed;
+        doctor.Registration.Nickname = request.Nickname;
+        doctor.Registration.Confirmed = request.Confirmed;
 
         if (doctor.Registration.Status == RegistrationStatus.NotStarted)
         {
@@ -53,32 +41,32 @@ public class RegistrationService : IRegistrationService
         return ToDto(doctor);
     }
 
-    public async Task<RegistrationDto> GetAsync(CancellationToken cancellationToken)
+    public async Task<RegistrationDto?> UnregisterAsync(long telegramUserId, CancellationToken cancellationToken)
     {
-        var doctor = await EnsureDoctorAsync(cancellationToken);
-        return ToDto(doctor);
-    }
-
-    public async Task<RegistrationDto?> GetByTelegramUsernameAsync(string telegramUsername, CancellationToken cancellationToken)
-    {
-        if (string.IsNullOrWhiteSpace(telegramUsername))
+        var doctor = await _db.Doctors.Include(d => d.Registration)
+            .FirstOrDefaultAsync(d => d.TelegramUserId == telegramUserId, cancellationToken);
+        if (doctor is null)
         {
             return null;
         }
 
-        var doctor = await _db.Doctors
-            .Include(d => d.Registration)
-            .AsNoTracking()
-            .FirstOrDefaultAsync(d => d.TelegramUsername == telegramUsername, cancellationToken);
+        doctor.Registration ??= new Registration();
+        doctor.Registration.Status = RegistrationStatus.NotStarted;
+        doctor.Registration.SpecializationCodes = new List<string>();
+        doctor.Registration.SpecializationTitles = new List<string>();
+        doctor.Registration.Nickname = null;
+        doctor.Registration.Confirmed = false;
+        doctor.Registration.StartedAt = null;
+        doctor.RegisteredAt = null;
 
-        return doctor is null ? null : ToDto(doctor);
+        await _db.SaveChangesAsync(cancellationToken);
+        return ToDto(doctor);
     }
 
-    private async Task<Domain.Entities.Doctor> EnsureDoctorAsync(CancellationToken cancellationToken)
+    private async Task<Domain.Entities.Doctor> EnsureDoctorAsync(long telegramUserId, CancellationToken cancellationToken)
     {
-        var doctorId = _currentUser.GetCurrentUserId();
         var doctor = await _db.Doctors.Include(d => d.Registration)
-            .FirstOrDefaultAsync(d => d.Id == doctorId, cancellationToken);
+            .FirstOrDefaultAsync(d => d.TelegramUserId == telegramUserId, cancellationToken);
 
         if (doctor != null)
         {
@@ -89,12 +77,12 @@ public class RegistrationService : IRegistrationService
 
         doctor = new Domain.Entities.Doctor
         {
-            Id = doctorId,
+            Id = Guid.NewGuid(),
+            TelegramUserId = telegramUserId,
             Registration = new Registration
             {
                 Status = RegistrationStatus.NotStarted
-            },
-            AcceptingNewPatients = true
+            }
         };
 
         _db.Doctors.Add(doctor);
@@ -111,9 +99,10 @@ public class RegistrationService : IRegistrationService
         return new RegistrationDto(
             reg.Status,
             reg.SpecializationCodes.AsReadOnly(),
-            reg.HumanInLoopConfirmed,
+            reg.Nickname,
+            reg.Confirmed,
             reg.StartedAt,
-            doctor.TelegramUsername);
+            doctor.TelegramUserId);
     }
 
     private static void TryCompleteRegistration(Domain.Entities.Doctor doctor)
@@ -125,7 +114,7 @@ public class RegistrationService : IRegistrationService
             return;
         }
 
-        if (reg.HumanInLoopConfirmed && reg.SpecializationCodes.Count > 0)
+        if (reg.Confirmed && reg.SpecializationCodes.Count > 0)
         {
             reg.Status = RegistrationStatus.Completed;
         }

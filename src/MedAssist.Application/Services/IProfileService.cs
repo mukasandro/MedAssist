@@ -5,6 +5,7 @@ namespace MedAssist.Application.Services;
 
 public interface IProfileService
 {
-    Task<ProfileDto> GetAsync(CancellationToken cancellationToken);
-    Task<ProfileDto> UpdateAsync(UpdateProfileRequest request, CancellationToken cancellationToken);
+    Task<ProfileDto?> GetAsync(long telegramUserId, CancellationToken cancellationToken);
+    Task<ProfileDto?> UpdateAsync(long telegramUserId, UpdateProfileRequest request, CancellationToken cancellationToken);
+    Task<ProfileDto?> UpdateSpecializationAsync(long telegramUserId, UpdateSpecializationRequest request, CancellationToken cancellationToken);
 }

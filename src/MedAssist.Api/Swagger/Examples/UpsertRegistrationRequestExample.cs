@@ -7,17 +7,8 @@ public class UpsertRegistrationRequestExample : IExamplesProvider<UpsertRegistra
 {
     public UpsertRegistrationRequest GetExamples() =>
         new(
-            DisplayName: "Д-р Иван Петров",
             SpecializationCodes: new[] { "cardiology" },
-            TelegramUsername: "dr_ivan_petrov",
-            Degrees: "к.м.н.",
-            ExperienceYears: 12,
-            Languages: "ru,en",
-            Bio: "Кардиолог профилактического профиля.",
-            FocusAreas: "профилактика,гипертензия",
-            AcceptingNewPatients: true,
-            Location: "Москва (MSK)",
-            ContactPolicy: "Отвечаю в рабочие часы 10-18 MSK",
-            AvatarUrl: "https://example.com/avatar.jpg",
-            HumanInLoopConfirmed: true);
+            TelegramUserId: 123456789,
+            Nickname: "Доктор_кардио",
+            Confirmed: true);
 }

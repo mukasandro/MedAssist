@@ -7,11 +7,9 @@ public class CreatePatientRequestExample : IExamplesProvider<CreatePatientReques
 {
     public CreatePatientRequest GetExamples() =>
         new(
-            FullName: "Иван Иванов",
-            BirthDate: new DateTime(1985, 5, 12),
             Sex: MedAssist.Domain.Enums.PatientSex.Male,
-            Phone: "+79990000000",
-            Email: "ivan@example.com",
+            AgeYears: 38,
+            Nickname: "patient_038",
             Allergies: "Пенициллин",
             ChronicConditions: "Сахарный диабет 2 типа",
             Tags: "диабет,наблюдение",

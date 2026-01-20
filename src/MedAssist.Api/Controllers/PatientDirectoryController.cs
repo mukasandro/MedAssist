@@ -1,3 +1,4 @@
+using MedAssist.Api.Swagger;
 using MedAssist.Application.DTOs;
 using MedAssist.Application.Requests;
 using MedAssist.Application.Services;
@@ -6,6 +7,7 @@ using Swashbuckle.AspNetCore.Annotations;
 
 namespace MedAssist.Api.Controllers;
 
+[SwaggerGroup("admin")]
 [ApiController]
 [Route("v1/patient-directory")]
 public class PatientDirectoryController : ControllerBase

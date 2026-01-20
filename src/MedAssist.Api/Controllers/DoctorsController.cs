@@ -1,11 +1,13 @@
+using MedAssist.Api.Swagger;
 using MedAssist.Application.DTOs;
-using MedAssist.Application.Services;
 using MedAssist.Application.Requests;
+using MedAssist.Application.Services;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
 
 namespace MedAssist.Api.Controllers;
 
+[SwaggerGroup("admin")]
 [ApiController]
 [Route("v1/doctors")]
 public class DoctorsController : ControllerBase
@@ -34,6 +36,27 @@ public class DoctorsController : ControllerBase
     {
         var updated = await _doctorService.UpdateAsync(id, request, cancellationToken);
         return updated is null ? NotFound() : Ok(updated);
+    }
+
+    [HttpPut("{id:guid}/specialization")]
+    [SwaggerOperation(Summary = "Обновить специализацию врача", Description = "Меняет специализацию по коду из справочника.")]
+    [ProducesResponseType(typeof(DoctorPublicDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UpdateSpecialization(
+        Guid id,
+        [FromBody] UpdateSpecializationRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var updated = await _doctorService.UpdateSpecializationAsync(id, request, cancellationToken);
+            return updated is null ? NotFound() : Ok(updated);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
     }
 
     [HttpDelete("{id:guid}")]

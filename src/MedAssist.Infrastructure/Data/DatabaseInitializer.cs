@@ -47,7 +47,12 @@ public static class DatabaseInitializer
 
         await dbContext.Database.EnsureCreatedAsync(cancellationToken);
 
+        await EnsurePersonalDataColumnsAsync(dbContext, logger, cancellationToken);
         await EnsureSpecializationColumnsAsync(dbContext, logger, cancellationToken);
+        await EnsureTelegramUserIdColumnAsync(dbContext, logger, cancellationToken);
+        await EnsureRegistrationConfirmedColumnAsync(dbContext, logger, cancellationToken);
+        await EnsureDoctorProfileColumnsRemovedAsync(dbContext, logger, cancellationToken);
+        await EnsureStaticContentTableAsync(dbContext, logger, cancellationToken);
     }
 
     private static async Task EnsureSpecializationColumnsAsync(
@@ -74,5 +79,140 @@ public static class DatabaseInitializer
 
         await dbContext.Database.ExecuteSqlRawAsync(sql, cancellationToken);
         logger?.LogInformation("Ensured specialization columns exist in Doctors table.");
+    }
+
+    private static async Task EnsureStaticContentTableAsync(
+        MedAssistDbContext dbContext,
+        ILogger? logger,
+        CancellationToken cancellationToken)
+    {
+        const string sql = @"
+            CREATE TABLE IF NOT EXISTS ""StaticContents"" (
+                ""Id"" uuid NOT NULL,
+                ""Code"" text NOT NULL,
+                ""Title"" text NULL,
+                ""Value"" text NOT NULL,
+                ""UpdatedAt"" timestamp with time zone NOT NULL,
+                CONSTRAINT ""PK_StaticContents"" PRIMARY KEY (""Id"")
+            );
+
+            CREATE UNIQUE INDEX IF NOT EXISTS ""IX_StaticContents_Code"" ON ""StaticContents"" (""Code"");
+        ";
+
+        await dbContext.Database.ExecuteSqlRawAsync(sql, cancellationToken);
+        logger?.LogInformation("Ensured StaticContents table exists.");
+    }
+
+    private static async Task EnsurePersonalDataColumnsAsync(
+        MedAssistDbContext dbContext,
+        ILogger? logger,
+        CancellationToken cancellationToken)
+    {
+        const string sql = @"
+            ALTER TABLE IF EXISTS ""Patients""
+            ADD COLUMN IF NOT EXISTS ""AgeYears"" integer NULL,
+            ADD COLUMN IF NOT EXISTS ""Nickname"" text NULL;
+
+            DO $$
+            BEGIN
+                IF EXISTS (
+                    SELECT 1
+                    FROM information_schema.columns
+                    WHERE table_schema = 'public'
+                      AND table_name = 'Patients'
+                      AND column_name = 'BirthDate'
+                ) THEN
+                    UPDATE ""Patients""
+                    SET ""AgeYears"" = date_part('year', age(""BirthDate""))::int
+                    WHERE ""AgeYears"" IS NULL
+                      AND ""BirthDate"" IS NOT NULL;
+                END IF;
+            END $$;
+
+            ALTER TABLE IF EXISTS ""Patients""
+            DROP COLUMN IF EXISTS ""FullName"",
+            DROP COLUMN IF EXISTS ""BirthDate"",
+            DROP COLUMN IF EXISTS ""Phone"",
+            DROP COLUMN IF EXISTS ""Email"";
+
+            ALTER TABLE IF EXISTS ""Doctors""
+            DROP COLUMN IF EXISTS ""DisplayName"";
+        ";
+
+        await dbContext.Database.ExecuteSqlRawAsync(sql, cancellationToken);
+        logger?.LogInformation("Ensured personal data columns are removed.");
+    }
+
+    private static async Task EnsureTelegramUserIdColumnAsync(
+        MedAssistDbContext dbContext,
+        ILogger? logger,
+        CancellationToken cancellationToken)
+    {
+        const string sql = @"
+            ALTER TABLE IF EXISTS ""Doctors""
+            ADD COLUMN IF NOT EXISTS ""TelegramUserId"" bigint NULL;
+
+            CREATE UNIQUE INDEX IF NOT EXISTS ""IX_Doctors_TelegramUserId""
+            ON ""Doctors"" (""TelegramUserId"");
+        ";
+
+        await dbContext.Database.ExecuteSqlRawAsync(sql, cancellationToken);
+        logger?.LogInformation("Ensured TelegramUserId column exists in Doctors table.");
+    }
+
+    private static async Task EnsureRegistrationConfirmedColumnAsync(
+        MedAssistDbContext dbContext,
+        ILogger? logger,
+        CancellationToken cancellationToken)
+    {
+        const string sql = @"
+            ALTER TABLE IF EXISTS ""Doctors""
+            ADD COLUMN IF NOT EXISTS ""Registration_Confirmed"" boolean NOT NULL DEFAULT false,
+            ADD COLUMN IF NOT EXISTS ""Registration_Nickname"" text NULL;
+
+            DO $$
+            BEGIN
+                IF EXISTS (
+                    SELECT 1
+                    FROM information_schema.columns
+                    WHERE table_schema = 'public'
+                      AND table_name = 'Doctors'
+                      AND column_name = 'Registration_HumanInLoopConfirmed'
+                ) THEN
+                    UPDATE ""Doctors""
+                    SET ""Registration_Confirmed"" = ""Registration_HumanInLoopConfirmed""
+                    WHERE ""Registration_Confirmed"" IS DISTINCT FROM ""Registration_HumanInLoopConfirmed"";
+
+                    ALTER TABLE ""Doctors""
+                    DROP COLUMN ""Registration_HumanInLoopConfirmed"";
+                END IF;
+            END $$;
+        ";
+
+        await dbContext.Database.ExecuteSqlRawAsync(sql, cancellationToken);
+        logger?.LogInformation("Ensured Registration_Confirmed column exists in Doctors table.");
+    }
+
+    private static async Task EnsureDoctorProfileColumnsRemovedAsync(
+        MedAssistDbContext dbContext,
+        ILogger? logger,
+        CancellationToken cancellationToken)
+    {
+        const string sql = @"
+            ALTER TABLE IF EXISTS ""Doctors""
+            DROP COLUMN IF EXISTS ""Degrees"",
+            DROP COLUMN IF EXISTS ""ExperienceYears"",
+            DROP COLUMN IF EXISTS ""Languages"",
+            DROP COLUMN IF EXISTS ""Bio"",
+            DROP COLUMN IF EXISTS ""FocusAreas"",
+            DROP COLUMN IF EXISTS ""AcceptingNewPatients"",
+            DROP COLUMN IF EXISTS ""Location"",
+            DROP COLUMN IF EXISTS ""ContactPolicy"",
+            DROP COLUMN IF EXISTS ""AvatarUrl"",
+            DROP COLUMN IF EXISTS ""Rating"";
+        ";
+
+        await dbContext.Database.ExecuteSqlRawAsync(sql, cancellationToken);
+        logger?.LogInformation("Removed extended doctor profile columns from Doctors table.");
     }
 }

@@ -18,12 +18,11 @@ public static class DependencyInjection
         services.AddScoped<IRegistrationService, RegistrationService>();
         services.AddScoped<IProfileService, ProfileService>();
         services.AddScoped<IPatientService, PatientService>();
-        services.AddScoped<IDialogService, DialogService>();
-        services.AddScoped<IMessageService, MessageService>();
         services.AddScoped<IConsentService, ConsentService>();
         services.AddScoped<IReferenceService, ReferenceService>();
         services.AddScoped<IDoctorService, DoctorService>();
         services.AddScoped<IPatientDirectoryService, PatientDirectoryService>();
+        services.AddScoped<IStaticContentService, StaticContentService>();
 
         return services;
     }

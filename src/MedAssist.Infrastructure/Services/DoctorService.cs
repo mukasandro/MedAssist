@@ -1,8 +1,8 @@
 using System.Collections.Generic;
 using System.Linq;
 using MedAssist.Application.DTOs;
-using MedAssist.Application.Services;
 using MedAssist.Application.Requests;
+using MedAssist.Application.Services;
 using MedAssist.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Bogus;
@@ -12,11 +12,13 @@ namespace MedAssist.Infrastructure.Services;
 public class DoctorService : IDoctorService
 {
     private readonly MedAssistDbContext _db;
+    private readonly IReferenceService _referenceService;
     private static readonly Guid DefaultDoctorId = Guid.Parse("11111111-1111-1111-1111-111111111111");
 
-    public DoctorService(MedAssistDbContext db)
+    public DoctorService(MedAssistDbContext db, IReferenceService referenceService)
     {
         _db = db;
+        _referenceService = referenceService;
     }
 
     public async Task<IReadOnlyCollection<DoctorPublicDto>> GetAllAsync(CancellationToken cancellationToken)
@@ -34,7 +36,6 @@ public class DoctorService : IDoctorService
         doctor.SpecializationCodes ??= new List<string>();
         doctor.SpecializationTitles ??= new List<string>();
 
-        doctor.DisplayName = request.DisplayName;
         if (request.SpecializationCodes is not null)
         {
             doctor.SpecializationCodes = request.SpecializationCodes.ToList();
@@ -43,17 +44,35 @@ public class DoctorService : IDoctorService
         {
             doctor.SpecializationTitles = request.SpecializationTitles.ToList();
         }
-        doctor.Degrees = request.Degrees;
-        doctor.ExperienceYears = request.ExperienceYears;
-        doctor.Languages = request.Languages;
-        doctor.Bio = request.Bio;
-        doctor.FocusAreas = request.FocusAreas;
-        doctor.AcceptingNewPatients = request.AcceptingNewPatients;
-        doctor.Location = request.Location;
-        doctor.ContactPolicy = request.ContactPolicy;
-        doctor.AvatarUrl = request.AvatarUrl;
+        if (request.Nickname is not null)
+        {
+            doctor.Registration.Nickname = string.IsNullOrWhiteSpace(request.Nickname)
+                ? null
+                : request.Nickname.Trim();
+        }
         doctor.Verified = request.Verified;
-        doctor.Rating = request.Rating;
+        doctor.Registration.SpecializationCodes = doctor.SpecializationCodes.ToList();
+        doctor.Registration.SpecializationTitles = doctor.SpecializationTitles.ToList();
+
+        await _db.SaveChangesAsync(cancellationToken);
+        return ToDto(doctor);
+    }
+
+    public async Task<DoctorPublicDto?> UpdateSpecializationAsync(Guid id, UpdateSpecializationRequest request, CancellationToken cancellationToken)
+    {
+        var doctor = await _db.Doctors.Include(d => d.Registration)
+            .FirstOrDefaultAsync(d => d.Id == id, cancellationToken);
+        if (doctor == null) return null;
+
+        var specialization = await GetSpecializationAsync(request.Code, cancellationToken);
+        if (specialization is null)
+        {
+            throw new InvalidOperationException("Specialization code not found.");
+        }
+
+        doctor.Registration ??= new Domain.Entities.Registration();
+        doctor.SpecializationCodes = new List<string> { specialization.Code };
+        doctor.SpecializationTitles = new List<string> { specialization.Title };
         doctor.Registration.SpecializationCodes = doctor.SpecializationCodes.ToList();
         doctor.Registration.SpecializationTitles = doctor.SpecializationTitles.ToList();
 
@@ -65,13 +84,6 @@ public class DoctorService : IDoctorService
     {
         var doctor = await _db.Doctors.FirstOrDefaultAsync(d => d.Id == id, cancellationToken);
         if (doctor == null) return;
-
-        var dialogIds = await _db.Dialogs.Where(d => d.DoctorId == id).Select(d => d.Id).ToListAsync(cancellationToken);
-        var messages = _db.Messages.Where(m => dialogIds.Contains(m.DialogId));
-        _db.Messages.RemoveRange(messages);
-
-        var dialogs = _db.Dialogs.Where(d => d.DoctorId == id);
-        _db.Dialogs.RemoveRange(dialogs);
 
         var patients = _db.Patients.Where(p => p.DoctorId == id);
         _db.Patients.RemoveRange(patients);
@@ -88,27 +100,16 @@ public class DoctorService : IDoctorService
         var doctor = new Domain.Entities.Doctor
         {
             Id = Guid.NewGuid(),
-            DisplayName = $"Д-р {faker.Name.LastName()} {faker.Name.FirstName()}",
             SpecializationCodes = new List<string> { "cardiology" },
             SpecializationTitles = new List<string> { "Кардиология" },
-            Degrees = faker.PickRandom(new[] { "к.м.н.", "д.м.н.", null }),
-            ExperienceYears = faker.Random.Int(3, 25),
-            Languages = "ru,en",
-            Bio = faker.Lorem.Sentence(6),
-            FocusAreas = faker.PickRandom(new[] { "профилактика,гипертензия", "аритмии", "гипертония" }),
-            TelegramUsername = faker.Internet.UserName().Replace(".", "_"),
-            AcceptingNewPatients = faker.Random.Bool(),
-            Location = faker.Address.City(),
-            ContactPolicy = "Отвечаю в рабочие часы",
-            AvatarUrl = null,
+            TelegramUserId = faker.Random.Long(100000000, 9999999999),
             Verified = faker.Random.Bool(0.7f),
-            Rating = Math.Round(faker.Random.Double(4, 5), 1),
             Registration = new Domain.Entities.Registration
             {
                 Status = Domain.Enums.RegistrationStatus.Completed,
                 SpecializationCodes = new List<string> { "cardiology" },
                 SpecializationTitles = new List<string> { "Кардиология" },
-                HumanInLoopConfirmed = true,
+                Confirmed = true,
                 StartedAt = DateTimeOffset.UtcNow
             }
         };
@@ -126,18 +127,15 @@ public class DoctorService : IDoctorService
             _db.Doctors.Add(new Domain.Entities.Doctor
             {
                 Id = DefaultDoctorId,
-                DisplayName = "Д-р Тестовый",
                 SpecializationCodes = new List<string> { "therapy" },
                 SpecializationTitles = new List<string> { "Терапия" },
-                TelegramUsername = "test_doctor",
-                AcceptingNewPatients = true,
-                Languages = "ru",
+                TelegramUserId = 1000000001,
                 Registration = new Domain.Entities.Registration
                 {
                     Status = Domain.Enums.RegistrationStatus.Completed,
                     SpecializationCodes = new List<string> { "therapy" },
                     SpecializationTitles = new List<string> { "Терапия" },
-                    HumanInLoopConfirmed = true,
+                    Confirmed = true,
                     StartedAt = DateTimeOffset.UtcNow
                 }
             });
@@ -149,7 +147,18 @@ public class DoctorService : IDoctorService
     {
         var codes = d.SpecializationCodes ?? new List<string>();
         var titles = d.SpecializationTitles ?? new List<string>();
-        return new(d.Id, d.DisplayName, codes.AsReadOnly(), titles.AsReadOnly(), d.Degrees, d.ExperienceYears, d.Languages, d.Bio,
-            d.FocusAreas, d.AcceptingNewPatients, d.Location, d.ContactPolicy, d.AvatarUrl, d.Verified, d.Rating);
+        return new(d.Id, codes.AsReadOnly(), titles.AsReadOnly(), d.TelegramUserId, d.Registration?.Nickname, d.Verified);
+    }
+
+    private async Task<SpecializationDto?> GetSpecializationAsync(string code, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(code))
+        {
+            return null;
+        }
+
+        var specializations = await _referenceService.GetSpecializationsAsync(cancellationToken);
+        return specializations.FirstOrDefault(s =>
+            string.Equals(s.Code, code.Trim(), StringComparison.OrdinalIgnoreCase));
     }
 }

@@ -3,11 +3,9 @@ using MedAssist.Domain.Enums;
 namespace MedAssist.Application.Requests;
 
 public record CreatePatientRequest(
-    string FullName,
-    DateTime? BirthDate,
     PatientSex? Sex,
-    string? Phone,
-    string? Email,
+    int? AgeYears,
+    string? Nickname,
     string? Allergies,
     string? ChronicConditions,
     string? Tags,

@@ -1,16 +1,16 @@
 import { useMemo, useState } from 'react'
 import { Layout } from './components/Layout'
 import { Breadcrumbs } from './components/Breadcrumbs'
-import DialogsPage from './pages/DialogsPage'
 import ReferencePage from './pages/ReferencePage'
 import DashboardPage from './pages/DashboardPage'
 import DoctorsAdminPage from './pages/DoctorsAdminPage'
 import PatientsAdminPage from './pages/PatientsAdminPage'
+import StaticContentAdminPage from './pages/StaticContentAdminPage'
 
 const navItems = [
   { key: 'dashboard', label: 'Обзор', icon: '📊' },
-  { key: 'dialogs', label: 'Диалоги', icon: '💬' },
   { key: 'reference', label: 'Справочники', icon: '📚' },
+  { key: 'static-content', label: 'Статика', icon: '🧩' },
   { key: 'doctors', label: 'Врачи', icon: '🛡️' },
   { key: 'patients-admin', label: 'Пациенты (админ)', icon: '🛡️' },
 ]
@@ -27,10 +27,10 @@ function App() {
     switch (active) {
       case 'dashboard':
         return <DashboardPage />
-      case 'dialogs':
-        return <DialogsPage />
       case 'reference':
         return <ReferencePage />
+      case 'static-content':
+        return <StaticContentAdminPage />
       case 'doctors':
         return <DoctorsAdminPage />
       case 'patients-admin':

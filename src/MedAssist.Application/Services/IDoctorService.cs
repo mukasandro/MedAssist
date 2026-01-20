@@ -7,6 +7,7 @@ public interface IDoctorService
 {
     Task<IReadOnlyCollection<DoctorPublicDto>> GetAllAsync(CancellationToken cancellationToken);
     Task<DoctorPublicDto?> UpdateAsync(Guid id, UpdateDoctorRequest request, CancellationToken cancellationToken);
+    Task<DoctorPublicDto?> UpdateSpecializationAsync(Guid id, UpdateSpecializationRequest request, CancellationToken cancellationToken);
     Task<DoctorPublicDto> CreateRandomAsync(CancellationToken cancellationToken);
     Task DeleteAsync(Guid id, CancellationToken cancellationToken);
 }

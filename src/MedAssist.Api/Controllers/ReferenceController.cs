@@ -1,3 +1,4 @@
+using MedAssist.Api.Swagger;
 using MedAssist.Application.DTOs;
 using MedAssist.Application.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -5,6 +6,7 @@ using Swashbuckle.AspNetCore.Annotations;
 
 namespace MedAssist.Api.Controllers;
 
+[SwaggerGroup("admin")]
 [ApiController]
 [Route("v1/reference")]
 public class ReferenceController : ControllerBase
@@ -17,6 +19,7 @@ public class ReferenceController : ControllerBase
     }
 
     [SwaggerOperation(Summary = "Справочник специализаций", Description = "Доступные специализации для регистрации.")]
+    [SwaggerGroup("bot")]
     [HttpGet("specializations")]
     [ProducesResponseType(typeof(IReadOnlyCollection<SpecializationDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetSpecializations(CancellationToken cancellationToken)

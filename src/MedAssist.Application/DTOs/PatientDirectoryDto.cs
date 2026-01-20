@@ -5,11 +5,9 @@ namespace MedAssist.Application.DTOs;
 public record PatientDirectoryDto(
     Guid Id,
     Guid DoctorId,
-    string FullName,
-    DateTime? BirthDate,
     PatientSex? Sex,
-    string? Phone,
-    string? Email,
+    int? AgeYears,
+    string? Nickname,
     string? Allergies,
     string? ChronicConditions,
     string? Tags,
@@ -17,6 +15,4 @@ public record PatientDirectoryDto(
     string? Notes,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt,
-    Guid? LastDialogId,
-    string? LastSummary,
     DateTimeOffset? LastInteractionAt);

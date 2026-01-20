@@ -1,8 +1,10 @@
+using MedAssist.Api.Swagger;
 using MedAssist.Application;
 using MedAssist.Infrastructure;
 using MedAssist.Infrastructure.Data;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Formatters;
+using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.OpenApi.Models;
 using Serilog;
 using Swashbuckle.AspNetCore.Filters;
@@ -31,11 +33,33 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
     options.EnableAnnotations();
-    options.SwaggerDoc("v1", new OpenApiInfo
+    options.SwaggerDoc("admin", new OpenApiInfo
     {
-        Title = "MedAssist API",
+        Title = "MedAssist Admin API",
         Version = "v1",
-        Description = "MVP REST API for doctors, patients, dialogs, and consents."
+        Description = "Administrative API surface."
+    });
+    options.SwaggerDoc("bot", new OpenApiInfo
+    {
+        Title = "MedAssist Bot API",
+        Version = "v1",
+        Description = "Bot-facing API surface."
+    });
+    options.DocInclusionPredicate((docName, apiDesc) =>
+    {
+        if (apiDesc.ActionDescriptor is not ControllerActionDescriptor actionDescriptor)
+        {
+            return false;
+        }
+
+        var groups = actionDescriptor.MethodInfo
+            .GetCustomAttributes(true)
+            .OfType<SwaggerGroupAttribute>()
+            .Concat(actionDescriptor.ControllerTypeInfo.GetCustomAttributes(true).OfType<SwaggerGroupAttribute>())
+            .Select(a => a.GroupName)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        return groups.Contains(docName);
     });
     options.ExampleFilters();
 });
@@ -46,9 +70,14 @@ builder.Services.AddSwaggerExamplesFromAssemblyOf<Program>();
 
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("DefaultCors", policy =>
+    options.AddPolicy("DefaultCors", policy => policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod());
+    options.AddPolicy("DevCors", policy =>
     {
-        policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod();
+        policy
+            .SetIsOriginAllowed(_ => true)
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials();
     });
 });
 
@@ -57,11 +86,19 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
-    app.UseSwaggerUI();
+    app.UseSwaggerUI(options =>
+    {
+        options.SwaggerEndpoint("/swagger/bot/swagger.json", "MedAssist Bot API");
+        options.SwaggerEndpoint("/swagger/admin/swagger.json", "MedAssist Admin API");
+    });
 }
 
-app.UseHttpsRedirection();
-app.UseCors("DefaultCors");
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
+
+app.UseCors(app.Environment.IsDevelopment() ? "DevCors" : "DefaultCors");
 app.UseAuthorization();
 app.MapControllers();
 

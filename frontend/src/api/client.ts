@@ -6,13 +6,12 @@ import {
   UpdateProfileRequest,
   PatientDto,
   CreatePatientRequest,
-  DialogDto,
-  CreateDialogRequest,
-  MessageDto,
-  CreateMessageRequest,
   SpecializationDto,
   DoctorPublicDto,
   UpdateDoctorRequest,
+  StaticContentDto,
+  CreateStaticContentRequest,
+  UpdateStaticContentRequest,
   PatientDirectoryDto,
   UpdatePatientDirectoryRequest,
 } from './types'
@@ -34,39 +33,44 @@ const api = axios.create({
 
 export const ApiClient = {
   // Registration
-  getRegistration: () => api.get<RegistrationDto>('/v1/registration').then((r) => r.data),
   upsertRegistration: (payload: UpsertRegistrationRequest) =>
-    api.post<RegistrationDto>('/v1/registration', payload).then((r) => r.data),
+    api.put<RegistrationDto>('/v1/registration', payload).then((r) => r.data),
 
   // Profile
-  getProfile: () => api.get<ProfileDto>('/v1/me').then((r) => r.data),
-  updateProfile: (payload: UpdateProfileRequest) =>
-    api.patch<ProfileDto>('/v1/me', payload).then((r) => r.data),
+  getProfile: (telegramUserId: string) =>
+    api
+      .get<ProfileDto>('/v1/me', { headers: { 'X-Telegram-User-Id': telegramUserId } })
+      .then((r) => r.data),
+  updateProfile: (telegramUserId: string, payload: UpdateProfileRequest) =>
+    api
+      .patch<ProfileDto>('/v1/me', payload, { headers: { 'X-Telegram-User-Id': telegramUserId } })
+      .then((r) => r.data),
 
   // Patients
-  getPatients: () => api.get<PatientDto[]>('/v1/patients').then((r) => r.data),
-  createPatient: (payload: CreatePatientRequest) =>
-    api.post<PatientDto>('/v1/patients', payload).then((r) => r.data),
-  deletePatient: (id: string) => api.delete(`/v1/patients/${id}`),
-  selectPatient: (id: string) => api.post('/v1/patients/' + id + '/select'),
-
-  // Dialogs
-  getDialogs: (patientId?: string | null) =>
+  getPatients: (telegramUserId: string) =>
     api
-      .get<DialogDto[]>('/v1/dialogs', { params: patientId ? { patientId } : undefined })
+      .get<PatientDto[]>('/v1/patients', { headers: { 'X-Telegram-User-Id': telegramUserId } })
       .then((r) => r.data),
-  createDialog: (payload: CreateDialogRequest) =>
-    api.post<DialogDto>('/v1/dialogs', payload).then((r) => r.data),
-  closeDialog: (id: string) => api.post<DialogDto>(`/v1/dialogs/${id}/close`).then((r) => r.data),
-
-  // Messages
-  getMessages: (dialogId: string) =>
-    api.get<MessageDto[]>(`/v1/dialogs/${dialogId}/messages`).then((r) => r.data),
-  addMessage: (dialogId: string, payload: CreateMessageRequest) =>
-    api.post<MessageDto>(`/v1/dialogs/${dialogId}/messages`, payload).then((r) => r.data),
+  createPatient: (telegramUserId: string, payload: CreatePatientRequest) =>
+    api
+      .post<PatientDto>('/v1/patients', payload, { headers: { 'X-Telegram-User-Id': telegramUserId } })
+      .then((r) => r.data),
+  deletePatient: (telegramUserId: string, id: string) =>
+    api.delete(`/v1/patients/${id}`, { headers: { 'X-Telegram-User-Id': telegramUserId } }),
+  setActivePatient: (telegramUserId: string, id: string) =>
+    api.post(`/v1/patients/${id}/setactive`, null, { headers: { 'X-Telegram-User-Id': telegramUserId } }),
 
   // Reference
   getSpecializations: () => api.get<SpecializationDto[]>('/v1/reference/specializations').then((r) => r.data),
+
+  // Static content
+  getStaticContent: () => api.get<StaticContentDto[]>('/v1/static-content').then((r) => r.data),
+  createStaticContent: (payload: CreateStaticContentRequest) =>
+    api.post<StaticContentDto>('/v1/static-content', payload).then((r) => r.data),
+  updateStaticContent: (id: string, payload: UpdateStaticContentRequest) =>
+    api.put<StaticContentDto>(`/v1/static-content/${id}`, payload).then((r) => r.data),
+  deleteStaticContent: (id: string) => api.delete(`/v1/static-content/${id}`),
+  getStaticContentValue: (code: string) => api.get<string>(`/v1/static-content/${code}`).then((r) => r.data),
 
   // Directory
   getDoctors: () => api.get<DoctorPublicDto[]>('/v1/doctors').then((r) => r.data),

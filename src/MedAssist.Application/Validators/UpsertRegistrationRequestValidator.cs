@@ -7,17 +7,9 @@ public class UpsertRegistrationRequestValidator : AbstractValidator<UpsertRegist
 {
     public UpsertRegistrationRequestValidator()
     {
-        RuleFor(x => x.DisplayName).NotEmpty().MaximumLength(256);
         RuleFor(x => x.SpecializationCodes).NotEmpty();
         RuleForEach(x => x.SpecializationCodes).NotEmpty().MaximumLength(100);
-        RuleFor(x => x.TelegramUsername).NotEmpty().MaximumLength(64);
-        RuleFor(x => x.Degrees).MaximumLength(128);
-        RuleFor(x => x.ExperienceYears).GreaterThanOrEqualTo(0).When(x => x.ExperienceYears.HasValue);
-        RuleFor(x => x.Languages).MaximumLength(128);
-        RuleFor(x => x.Bio).MaximumLength(1024);
-        RuleFor(x => x.FocusAreas).MaximumLength(512);
-        RuleFor(x => x.Location).MaximumLength(128);
-        RuleFor(x => x.ContactPolicy).MaximumLength(256);
-        RuleFor(x => x.AvatarUrl).MaximumLength(512);
+        RuleFor(x => x.TelegramUserId).GreaterThan(0);
+        RuleFor(x => x.Nickname).MaximumLength(64);
     }
 }

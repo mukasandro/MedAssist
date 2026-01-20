@@ -11,8 +11,7 @@ public class MedAssistDbContext : DbContext
 
     public DbSet<Doctor> Doctors => Set<Doctor>();
     public DbSet<Patient> Patients => Set<Patient>();
-    public DbSet<Dialog> Dialogs => Set<Dialog>();
-    public DbSet<Message> Messages => Set<Message>();
+    public DbSet<StaticContent> StaticContents => Set<StaticContent>();
     public DbSet<Consent> Consents => Set<Consent>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -20,36 +19,33 @@ public class MedAssistDbContext : DbContext
         modelBuilder.Entity<Doctor>(b =>
         {
             b.HasKey(x => x.Id);
-            b.Property(x => x.DisplayName).IsRequired();
             b.Property(x => x.SpecializationCodes).HasColumnType("text[]");
             b.Property(x => x.SpecializationTitles).HasColumnType("text[]");
-            b.Property(x => x.TelegramUsername).IsRequired().HasMaxLength(64);
-            b.Property(x => x.Languages).HasMaxLength(128);
-            b.Property(x => x.FocusAreas).HasMaxLength(512);
+            b.Property(x => x.TelegramUserId);
+            b.HasIndex(x => x.TelegramUserId).IsUnique();
             b.OwnsOne(x => x.Registration, reg =>
             {
                 reg.Property(r => r.SpecializationCodes).HasColumnType("text[]");
                 reg.Property(r => r.SpecializationTitles).HasColumnType("text[]");
+                reg.Property(r => r.Nickname).HasMaxLength(64);
             });
         });
 
         modelBuilder.Entity<Patient>(b =>
         {
             b.HasKey(x => x.Id);
-            b.Property(x => x.FullName).IsRequired();
+            b.Property(x => x.Nickname).HasMaxLength(64);
             b.Property(x => x.Tags).HasMaxLength(256);
         });
 
-        modelBuilder.Entity<Dialog>(b =>
+        modelBuilder.Entity<StaticContent>(b =>
         {
             b.HasKey(x => x.Id);
-            b.Property(x => x.Topic).HasMaxLength(256);
-        });
-
-        modelBuilder.Entity<Message>(b =>
-        {
-            b.HasKey(x => x.Id);
-            b.Property(x => x.Content).IsRequired();
+            b.Property(x => x.Code).IsRequired().HasMaxLength(64);
+            b.Property(x => x.Title).HasMaxLength(128);
+            b.Property(x => x.Value).IsRequired();
+            b.Property(x => x.UpdatedAt).IsRequired();
+            b.HasIndex(x => x.Code).IsUnique();
         });
 
         modelBuilder.Entity<Consent>(b =>

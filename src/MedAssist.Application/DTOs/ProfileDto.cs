@@ -5,20 +5,9 @@ namespace MedAssist.Application.DTOs;
 
 public record ProfileDto(
     Guid DoctorId,
-    string DisplayName,
     IReadOnlyCollection<string> SpecializationCodes,
     IReadOnlyCollection<string> SpecializationTitles,
-    string TelegramUsername,
-    string? Degrees,
-    int? ExperienceYears,
-    string? Languages,
-    string? Bio,
-    string? FocusAreas,
-    bool AcceptingNewPatients,
-    string? Location,
-    string? ContactPolicy,
-    string? AvatarUrl,
-    RegistrationStatus RegistrationStatus,
+    long? TelegramUserId,
+    string? Nickname,
     Guid? LastSelectedPatientId,
-    bool Verified,
-    double? Rating);
+    bool Verified);

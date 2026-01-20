@@ -6,6 +6,7 @@ namespace MedAssist.Application.DTOs;
 public record RegistrationDto(
     RegistrationStatus Status,
     IReadOnlyCollection<string> SpecializationCodes,
-    bool HumanInLoopConfirmed,
+    string? Nickname,
+    bool Confirmed,
     DateTimeOffset? StartedAt,
-    string TelegramUsername);
+    long? TelegramUserId);

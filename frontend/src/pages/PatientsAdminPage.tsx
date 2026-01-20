@@ -28,12 +28,11 @@ export default function PatientsAdminPage() {
   const [form, setForm] = useState<PatientDirectoryDto | null>(null)
   const [saveMessage, setSaveMessage] = useState<string | null>(null)
   const [createOpen, setCreateOpen] = useState(false)
-  const [createForm, setCreateForm] = useState<CreatePatientRequest>({
-    fullName: '',
-    birthDate: null,
+  const [createForm, setCreateForm] = useState<CreatePatientRequest & { telegramUserId: string }>({
+    telegramUserId: '',
     sex: null,
-    phone: '',
-    email: '',
+    ageYears: null,
+    nickname: '',
     allergies: '',
     chronicConditions: '',
     tags: '',
@@ -52,16 +51,18 @@ export default function PatientsAdminPage() {
   })
 
   const createMutation = useMutation({
-    mutationFn: (payload: CreatePatientRequest) => ApiClient.createPatient(payload),
+    mutationFn: (payload: CreatePatientRequest & { telegramUserId: string }) => {
+      const { telegramUserId, ...body } = payload
+      return ApiClient.createPatient(telegramUserId, body)
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-patients'] })
       setCreateOpen(false)
       setCreateForm({
-        fullName: '',
-        birthDate: null,
+        telegramUserId: '',
         sex: null,
-        phone: '',
-        email: '',
+        ageYears: null,
+        nickname: '',
         allergies: '',
         chronicConditions: '',
         tags: '',
@@ -106,7 +107,7 @@ export default function PatientsAdminPage() {
     setForm((prev) => (prev ? { ...prev, [key]: value } : prev))
   }
 
-  const handleCreateChange = (key: keyof CreatePatientRequest, value: any) => {
+  const handleCreateChange = (key: keyof (CreatePatientRequest & { telegramUserId: string }), value: any) => {
     setCreateForm((prev) => ({ ...prev, [key]: value }))
   }
 
@@ -149,10 +150,10 @@ export default function PatientsAdminPage() {
               <thead className="bg-surface text-left uppercase text-xs font-semibold text-textSecondary">
                 <tr>
                   <th className="px-3 py-2 w-10"></th>
-                  <th className="px-3 py-2">Имя</th>
+                  <th className="px-3 py-2">ID</th>
+                  <th className="px-3 py-2">Никнейм</th>
                   <th className="px-3 py-2">Пол</th>
-                  <th className="px-3 py-2">Телефон</th>
-                  <th className="px-3 py-2">Email</th>
+                  <th className="px-3 py-2">Возраст</th>
                   <th className="px-3 py-2">Статус</th>
                 </tr>
               </thead>
@@ -162,7 +163,7 @@ export default function PatientsAdminPage() {
                     key={p.id}
                     className="cursor-pointer hover:bg-accentMuted"
                     onClick={() => openPatient(p.id)}
-                    aria-label={`Открыть пациента ${p.fullName}`}
+                    aria-label={`Открыть пациента ${p.id}`}
                   >
                     <td className="px-3 py-2">
                       <input
@@ -172,10 +173,10 @@ export default function PatientsAdminPage() {
                         onChange={(e) => toggleSelect(p.id, e.currentTarget.checked)}
                       />
                     </td>
-                    <td className="px-3 py-2 font-medium text-textPrimary">{p.fullName}</td>
+                    <td className="px-3 py-2 font-medium text-textPrimary">{p.id}</td>
+                    <td className="px-3 py-2 text-textSecondary">{p.nickname ?? '—'}</td>
                     <td className="px-3 py-2 text-textSecondary">{p.sex ?? '—'}</td>
-                    <td className="px-3 py-2 text-textSecondary">{p.phone ?? '—'}</td>
-                    <td className="px-3 py-2 text-textSecondary">{p.email ?? '—'}</td>
+                    <td className="px-3 py-2 text-textSecondary">{p.ageYears ?? '—'}</td>
                     <td className="px-3 py-2">
                       <Badge label={p.status === 1 ? 'Активен' : 'Неактивен'} tone={statusTone(p.status)} />
                     </td>
@@ -200,7 +201,7 @@ export default function PatientsAdminPage() {
             </Button>
             <Button
               variant="primary"
-              disabled={createMutation.isPending || !createForm.fullName}
+              disabled={createMutation.isPending || !createForm.telegramUserId}
               onClick={() => {
                 createMutation.mutate(createForm)
               }}
@@ -212,17 +213,10 @@ export default function PatientsAdminPage() {
       >
         <div className="grid gap-3 md:grid-cols-2">
           <Input
-            label="Имя"
-            value={createForm.fullName}
-            onChange={(e) => handleCreateChange('fullName', e.currentTarget.value)}
-          />
-          <Input
-            label="Дата рождения"
-            type="date"
-            value={createForm.birthDate ? createForm.birthDate.split('T')[0] : ''}
-            onChange={(e) =>
-              handleCreateChange('birthDate', e.currentTarget.value ? `${e.currentTarget.value}T00:00:00Z` : null)
-            }
+            label="Telegram user id врача"
+            value={createForm.telegramUserId}
+            type="number"
+            onChange={(e) => handleCreateChange('telegramUserId', e.currentTarget.value)}
           />
           <Input
             label="Пол (0=М,1=Ж)"
@@ -231,14 +225,15 @@ export default function PatientsAdminPage() {
             onChange={(e) => handleCreateChange('sex', Number(e.currentTarget.value) as PatientSex)}
           />
           <Input
-            label="Телефон"
-            value={createForm.phone ?? ''}
-            onChange={(e) => handleCreateChange('phone', e.currentTarget.value)}
+            label="Возраст (лет)"
+            type="number"
+            value={createForm.ageYears ?? ''}
+            onChange={(e) => handleCreateChange('ageYears', Number(e.currentTarget.value))}
           />
           <Input
-            label="Email"
-            value={createForm.email ?? ''}
-            onChange={(e) => handleCreateChange('email', e.currentTarget.value)}
+            label="Никнейм"
+            value={createForm.nickname ?? ''}
+            onChange={(e) => handleCreateChange('nickname', e.currentTarget.value)}
           />
           <Textarea
             label="Аллергии"
@@ -276,7 +271,7 @@ export default function PatientsAdminPage() {
           setSelectedIds([])
           setForm(null)
         }}
-        title={form ? `Редактирование: ${form.fullName}` : 'Пациент'}
+        title={form ? `Редактирование: ${form.id}` : 'Пациент'}
         footer={
           <>
             <Button
@@ -295,11 +290,9 @@ export default function PatientsAdminPage() {
               onClick={() => {
                 if (!form) return
                 const payload: UpdatePatientDirectoryRequest = {
-                  fullName: form.fullName,
-                  birthDate: form.birthDate ?? null,
                   sex: form.sex as PatientSex | null,
-                  phone: form.phone ?? null,
-                  email: form.email ?? null,
+                  ageYears: form.ageYears ?? null,
+                  nickname: form.nickname ?? null,
                   allergies: form.allergies ?? null,
                   chronicConditions: form.chronicConditions ?? null,
                   tags: form.tags ?? null,
@@ -316,22 +309,20 @@ export default function PatientsAdminPage() {
       >
         {form ? (
           <div className="grid gap-3 md:grid-cols-2">
-            <Input label="Имя" value={form.fullName} onChange={(e) => handleChange('fullName', e.currentTarget.value)} />
             <Input label="ДокторId" value={form.doctorId} readOnly />
-            <Input
-              label="Дата рождения"
-              type="date"
-              value={form.birthDate ? form.birthDate.split('T')[0] : ''}
-              onChange={(e) => handleChange('birthDate', e.currentTarget.value ? `${e.currentTarget.value}T00:00:00Z` : null)}
-            />
             <Input
               label="Пол (0=М,1=Ж)"
               type="number"
               value={form.sex ?? ''}
               onChange={(e) => handleChange('sex', Number(e.currentTarget.value) as PatientSex)}
             />
-            <Input label="Телефон" value={form.phone ?? ''} onChange={(e) => handleChange('phone', e.currentTarget.value)} />
-            <Input label="Email" value={form.email ?? ''} onChange={(e) => handleChange('email', e.currentTarget.value)} />
+            <Input
+              label="Возраст (лет)"
+              type="number"
+              value={form.ageYears ?? ''}
+              onChange={(e) => handleChange('ageYears', Number(e.currentTarget.value))}
+            />
+            <Input label="Никнейм" value={form.nickname ?? ''} onChange={(e) => handleChange('nickname', e.currentTarget.value)} />
             <Textarea
               label="Аллергии"
               value={form.allergies ?? ''}

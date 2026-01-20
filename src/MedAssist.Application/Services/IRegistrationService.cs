@@ -6,6 +6,5 @@ namespace MedAssist.Application.Services;
 public interface IRegistrationService
 {
     Task<RegistrationDto> UpsertAsync(UpsertRegistrationRequest request, CancellationToken cancellationToken);
-    Task<RegistrationDto> GetAsync(CancellationToken cancellationToken);
-    Task<RegistrationDto?> GetByTelegramUsernameAsync(string telegramUsername, CancellationToken cancellationToken);
+    Task<RegistrationDto?> UnregisterAsync(long telegramUserId, CancellationToken cancellationToken);
 }

@@ -1,11 +1,11 @@
 using System.Collections.Generic;
+using Bogus;
 using MedAssist.Application.DTOs;
 using MedAssist.Application.Requests;
 using MedAssist.Application.Services;
 using MedAssist.Domain.Enums;
 using MedAssist.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
-using Bogus;
 
 namespace MedAssist.Infrastructure.Services;
 
@@ -29,11 +29,12 @@ public class PatientDirectoryService : IPatientDirectoryService
         var patient = await _db.Patients.FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
         if (patient == null) return null;
 
-        patient.FullName = request.FullName;
-        patient.BirthDate = request.BirthDate;
         patient.Sex = request.Sex;
-        patient.Phone = request.Phone;
-        patient.Email = request.Email;
+        if (request.AgeYears.HasValue)
+        {
+            patient.AgeYears = request.AgeYears;
+        }
+        patient.Nickname = string.IsNullOrWhiteSpace(request.Nickname) ? null : request.Nickname.Trim();
         patient.Allergies = request.Allergies;
         patient.ChronicConditions = request.ChronicConditions;
         patient.Tags = request.Tags;
@@ -49,18 +50,14 @@ public class PatientDirectoryService : IPatientDirectoryService
     {
         await EnsureDefaultDoctorAsync(cancellationToken);
         var faker = new Faker("ru");
-        var birth = faker.Date.Past(50, DateTime.UtcNow.AddYears(-18));
-        birth = DateTime.SpecifyKind(birth, DateTimeKind.Utc);
 
         var patient = new Domain.Entities.Patient
         {
             Id = Guid.NewGuid(),
             DoctorId = Guid.Parse("11111111-1111-1111-1111-111111111111"),
-            FullName = $"{faker.Name.LastName()} {faker.Name.FirstName()}",
-            BirthDate = birth,
             Sex = faker.PickRandom<PatientSex>(new[] { PatientSex.Male, PatientSex.Female }),
-            Phone = faker.Phone.PhoneNumber("+7 9## ### ## ##"),
-            Email = faker.Internet.Email(),
+            AgeYears = faker.Random.Int(18, 85),
+            Nickname = $"patient_{faker.Random.Int(1000, 9999)}",
             Allergies = faker.PickRandom(new[] { "Нет", "Пенициллин", "Пыльца", "Орехи" }),
             ChronicConditions = faker.PickRandom(new[] { "Гипертония", "Диабет 2 типа", "Нет данных" }),
             Tags = faker.PickRandom(new[] { "наблюдение", "плановый", "новый" }),
@@ -81,12 +78,6 @@ public class PatientDirectoryService : IPatientDirectoryService
         var patient = await _db.Patients.FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
         if (patient != null)
         {
-            var dialogs = _db.Dialogs.Where(d => d.PatientId == id);
-            var dialogIds = dialogs.Select(d => d.Id);
-            var messages = _db.Messages.Where(m => dialogIds.Contains(m.DialogId));
-
-            _db.Messages.RemoveRange(messages);
-            _db.Dialogs.RemoveRange(dialogs);
             _db.Patients.Remove(patient);
             await _db.SaveChangesAsync(cancellationToken);
         }
@@ -101,18 +92,15 @@ public class PatientDirectoryService : IPatientDirectoryService
             _db.Doctors.Add(new Domain.Entities.Doctor
             {
                 Id = defId,
-                DisplayName = "Д-р Тестовый",
                 SpecializationCodes = new List<string> { "therapy" },
                 SpecializationTitles = new List<string> { "Терапия" },
-                TelegramUsername = "test_doctor",
-                AcceptingNewPatients = true,
-                Languages = "ru",
+                TelegramUserId = 1000000001,
                 Registration = new Domain.Entities.Registration
                 {
                     Status = Domain.Enums.RegistrationStatus.Completed,
                     SpecializationCodes = new List<string> { "therapy" },
                     SpecializationTitles = new List<string> { "Терапия" },
-                    HumanInLoopConfirmed = true,
+                    Confirmed = true,
                     StartedAt = DateTimeOffset.UtcNow
                 }
             });
@@ -121,7 +109,7 @@ public class PatientDirectoryService : IPatientDirectoryService
     }
 
     private static PatientDirectoryDto ToDto(Domain.Entities.Patient patient) =>
-        new(patient.Id, patient.DoctorId, patient.FullName, patient.BirthDate, patient.Sex, patient.Phone, patient.Email,
-            patient.Allergies, patient.ChronicConditions, patient.Tags, patient.Status, patient.Notes, patient.CreatedAt,
-            patient.UpdatedAt, patient.LastDialogId, patient.LastSummary, patient.LastInteractionAt);
+        new(patient.Id, patient.DoctorId, patient.Sex, patient.AgeYears, patient.Nickname, patient.Allergies,
+            patient.ChronicConditions, patient.Tags, patient.Status, patient.Notes, patient.CreatedAt, patient.UpdatedAt,
+            patient.LastInteractionAt);
 }
