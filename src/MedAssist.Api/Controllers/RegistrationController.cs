@@ -23,7 +23,7 @@ public class RegistrationController : ControllerBase
 
     [SwaggerOperation(
         Summary = "Заполнить регистрацию врача",
-        Description = "Никнейм, специализация и отметка подтверждения: если регистрации нет — создадим, если есть — дополним без потери уже введённых данных.")]
+        Description = "Создает регистрацию врача на основе предоставленных данных.")]
     [HttpPut]
     [ProducesResponseType(typeof(RegistrationDto), StatusCodes.Status200OK)]
     [SwaggerRequestExample(typeof(UpsertRegistrationRequest), typeof(UpsertRegistrationRequestExample))]
@@ -33,7 +33,7 @@ public class RegistrationController : ControllerBase
         return Ok(result);
     }
 
-    [SwaggerOperation(Summary = "Отменить регистрацию", Description = "Сбрасывает регистрацию врача в состояние NotStarted.")]
+    [SwaggerOperation(Summary = "Отменить регистрацию", Description = "Удаляет регистрацию врача по идентификатору Telegram пользователя.")]
     [HttpDelete]
     [ProducesResponseType(typeof(RegistrationDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
