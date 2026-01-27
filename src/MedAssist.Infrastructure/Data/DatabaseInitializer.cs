@@ -52,6 +52,7 @@ public static class DatabaseInitializer
         await EnsureTelegramUserIdColumnAsync(dbContext, logger, cancellationToken);
         await EnsureTelegramUsernameColumnRemovedAsync(dbContext, logger, cancellationToken);
         await EnsureDoctorPatientForeignKeyAsync(dbContext, logger, cancellationToken);
+        await EnsureDoctorLastSelectedPatientForeignKeyAsync(dbContext, logger, cancellationToken);
         await EnsureRegistrationNicknameColumnAsync(dbContext, logger, cancellationToken);
         await EnsureRegistrationConfirmedColumnRemovedAsync(dbContext, logger, cancellationToken);
         await EnsureDoctorProfileColumnsRemovedAsync(dbContext, logger, cancellationToken);
@@ -225,6 +226,38 @@ public static class DatabaseInitializer
 
         await dbContext.Database.ExecuteSqlRawAsync(sql, cancellationToken);
         logger?.LogInformation("Ensured FK Patients.DoctorId -> Doctors.Id with cascade delete.");
+    }
+
+    private static async Task EnsureDoctorLastSelectedPatientForeignKeyAsync(
+        MedAssistDbContext dbContext,
+        ILogger? logger,
+        CancellationToken cancellationToken)
+    {
+        const string sql = @"
+            UPDATE ""Doctors"" d
+            SET ""LastSelectedPatientId"" = NULL
+            WHERE ""LastSelectedPatientId"" IS NOT NULL
+              AND NOT EXISTS (
+                  SELECT 1 FROM ""Patients"" p WHERE p.""Id"" = d.""LastSelectedPatientId""
+              );
+
+            DO $$
+            BEGIN
+                IF NOT EXISTS (
+                    SELECT 1
+                    FROM pg_constraint
+                    WHERE conname = 'FK_Doctors_LastSelectedPatientId'
+                ) THEN
+                    ALTER TABLE ""Doctors""
+                    ADD CONSTRAINT ""FK_Doctors_LastSelectedPatientId""
+                    FOREIGN KEY (""LastSelectedPatientId"") REFERENCES ""Patients"" (""Id"")
+                    ON DELETE SET NULL;
+                END IF;
+            END $$;
+        ";
+
+        await dbContext.Database.ExecuteSqlRawAsync(sql, cancellationToken);
+        logger?.LogInformation("Ensured FK Doctors.LastSelectedPatientId -> Patients.Id with ON DELETE SET NULL.");
     }
 
     private static async Task EnsureRegistrationConfirmedColumnRemovedAsync(

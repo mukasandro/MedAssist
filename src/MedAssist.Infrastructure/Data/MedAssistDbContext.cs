@@ -23,6 +23,10 @@ public class MedAssistDbContext : DbContext
                 .WithOne(x => x.Doctor)
                 .HasForeignKey(x => x.DoctorId)
                 .OnDelete(DeleteBehavior.Cascade);
+            b.HasOne(x => x.LastSelectedPatient)
+                .WithMany()
+                .HasForeignKey(x => x.LastSelectedPatientId)
+                .OnDelete(DeleteBehavior.SetNull);
             b.Property(x => x.SpecializationCodes).HasColumnType("text[]");
             b.Property(x => x.SpecializationTitles).HasColumnType("text[]");
             b.Property(x => x.TelegramUserId);

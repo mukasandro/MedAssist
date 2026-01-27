@@ -20,6 +20,7 @@ public class Doctor
 
     // Внутренние поля
     public Guid? LastSelectedPatientId { get; set; }
+    public Patient? LastSelectedPatient { get; set; }
     public string? Tags { get; set; }
     public List<Consent> Consents { get; set; } = new();
     public List<Patient> Patients { get; set; } = new();

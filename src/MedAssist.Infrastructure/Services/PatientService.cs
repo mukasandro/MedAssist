@@ -156,6 +156,11 @@ public class PatientService : IPatientService
             .FirstOrDefaultAsync(p => p.Id == id && p.DoctorId == doctor.Id, cancellationToken);
         if (patient != null)
         {
+            if (doctor.LastSelectedPatientId == id)
+            {
+                doctor.LastSelectedPatientId = null;
+            }
+
             _db.Patients.Remove(patient);
             await _db.SaveChangesAsync(cancellationToken);
         }
