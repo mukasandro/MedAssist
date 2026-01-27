@@ -187,6 +187,7 @@ export default function DoctorsAdminPage() {
                 const code = form.specializationCode.trim()
                 const payload: UpdateDoctorRequest = {
                   specializationCodes: code ? [code] : [],
+                  telegramUserId: form.telegramUserId ?? null,
                   nickname: form.nickname ?? null,
                   verified: form.verified,
                 }
@@ -205,7 +206,12 @@ export default function DoctorsAdminPage() {
               value={form.specializationCode}
               onChange={(e) => handleChange('specializationCode', e.currentTarget.value)}
             />
-            <Input label="Telegram ID" value={form.telegramUserId ?? ''} readOnly />
+            <Input
+              label="Telegram ID"
+              type="number"
+              value={form.telegramUserId ?? ''}
+              onChange={(e) => handleChange('telegramUserId', e.currentTarget.value === '' ? null : Number(e.currentTarget.value))}
+            />
             <Input label="Никнейм" value={form.nickname ?? ''} onChange={(e) => handleChange('nickname', e.currentTarget.value)} />
             <div className="flex items-center gap-3">
               <Toggle label="Верифицирован" checked={form.verified} onChange={(e) => handleChange('verified', e.currentTarget.checked)} />

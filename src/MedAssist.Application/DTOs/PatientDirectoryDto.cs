@@ -5,6 +5,7 @@ namespace MedAssist.Application.DTOs;
 public record PatientDirectoryDto(
     Guid Id,
     Guid DoctorId,
+    string? DoctorNickname,
     PatientSex? Sex,
     int? AgeYears,
     string? Nickname,

@@ -18,7 +18,7 @@ MVP REST API для врачебных сценариев (регистраци�
 - `src/MedAssist.Infrastructure` — in-memory сервисы, модуль DI, заглушка текущего пользователя.
 
 ## Ключевые эндпоинты (v1)
-- Регистрация: `POST /v1/registration` (никнейм, специализация), `DELETE /v1/registration` (через заголовок `X-Telegram-User-Id`).
+- Регистрация: `POST /v1/registration` (никнейм, специализация), `DELETE /v1/registration` (удаляет врача и связанные данные через заголовок `X-Telegram-User-Id`).
 - Профиль: `GET /v1/me`, `PATCH /v1/me` (через заголовок `X-Telegram-User-Id`).
 - Пациенты: `GET /v1/patients`, `POST /v1/patients`, `GET /v1/patients/{id}`, `DELETE /v1/patients/{id}`, `POST /v1/patients/{id}/setactive` (через заголовок `X-Telegram-User-Id`).
 - Статика: `GET /v1/static-content/{code}` (для бота), `GET|POST /v1/static-content`, `PUT|DELETE /v1/static-content/{id}` (админка).

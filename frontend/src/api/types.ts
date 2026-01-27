@@ -80,6 +80,7 @@ export interface DoctorPublicDto {
 
 export interface UpdateDoctorRequest {
   specializationCodes?: string[] | null
+  telegramUserId?: number | null
   nickname?: string | null
   verified: boolean
 }
@@ -107,6 +108,7 @@ export interface UpdateStaticContentRequest {
 export interface PatientDirectoryDto {
   id: string
   doctorId: string
+  doctorNickname?: string | null
   sex?: PatientSex | null
   ageYears?: number | null
   nickname?: string | null

@@ -20,13 +20,20 @@ public class PatientDirectoryService : IPatientDirectoryService
 
     public async Task<IReadOnlyCollection<PatientDirectoryDto>> GetAllAsync(CancellationToken cancellationToken)
     {
-        var patients = await _db.Patients.AsNoTracking().ToListAsync(cancellationToken);
+        var patients = await _db.Patients
+            .AsNoTracking()
+            .Include(p => p.Doctor)
+            .ThenInclude(d => d.Registration)
+            .ToListAsync(cancellationToken);
         return patients.Select(ToDto).ToList();
     }
 
     public async Task<PatientDirectoryDto?> UpdateAsync(Guid id, UpdatePatientDirectoryRequest request, CancellationToken cancellationToken)
     {
-        var patient = await _db.Patients.FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
+        var patient = await _db.Patients
+            .Include(p => p.Doctor)
+            .ThenInclude(d => d.Registration)
+            .FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
         if (patient == null) return null;
 
         patient.Sex = request.Sex;
@@ -70,6 +77,10 @@ public class PatientDirectoryService : IPatientDirectoryService
 
         _db.Patients.Add(patient);
         await _db.SaveChangesAsync(cancellationToken);
+        var doctor = await _db.Doctors
+            .Include(d => d.Registration)
+            .FirstOrDefaultAsync(d => d.Id == patient.DoctorId, cancellationToken);
+        patient.Doctor = doctor!;
         return ToDto(patient);
     }
 
@@ -108,7 +119,7 @@ public class PatientDirectoryService : IPatientDirectoryService
     }
 
     private static PatientDirectoryDto ToDto(Domain.Entities.Patient patient) =>
-        new(patient.Id, patient.DoctorId, patient.Sex, patient.AgeYears, patient.Nickname, patient.Allergies,
-            patient.ChronicConditions, patient.Tags, patient.Status, patient.Notes, patient.CreatedAt, patient.UpdatedAt,
-            patient.LastInteractionAt);
+        new(patient.Id, patient.DoctorId, patient.Doctor?.Registration?.Nickname, patient.Sex, patient.AgeYears,
+            patient.Nickname, patient.Allergies, patient.ChronicConditions, patient.Tags, patient.Status, patient.Notes,
+            patient.CreatedAt, patient.UpdatedAt, patient.LastInteractionAt);
 }

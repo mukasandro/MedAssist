@@ -33,7 +33,7 @@ public class RegistrationController : ControllerBase
         return Ok(result);
     }
 
-    [SwaggerOperation(Summary = "Отменить регистрацию", Description = "Удаляет регистрацию врача по идентификатору Telegram пользователя.")]
+    [SwaggerOperation(Summary = "Отменить регистрацию", Description = "Удаляет врача и все связанные данные по Telegram user id.")]
     [HttpDelete]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

@@ -65,13 +65,7 @@ public class RegistrationService : IRegistrationService
             return false;
         }
 
-        doctor.Registration ??= new Registration();
-        doctor.Registration.Status = RegistrationStatus.NotStarted;
-        doctor.Registration.SpecializationCodes = new List<string>();
-        doctor.Registration.SpecializationTitles = new List<string>();
-        doctor.Registration.Nickname = null;
-        doctor.Registration.StartedAt = null;
-        doctor.RegisteredAt = null;
+        _db.Doctors.Remove(doctor);
 
         await _db.SaveChangesAsync(cancellationToken);
         return true;

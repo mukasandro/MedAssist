@@ -8,6 +8,9 @@ public class UpdateDoctorRequestValidator : AbstractValidator<UpdateDoctorReques
     public UpdateDoctorRequestValidator()
     {
         RuleFor(x => x.Nickname).MaximumLength(64);
+        RuleFor(x => x.TelegramUserId)
+            .GreaterThan(0)
+            .When(x => x.TelegramUserId.HasValue);
         RuleForEach(x => x.SpecializationCodes!)
             .NotEmpty()
             .MaximumLength(100)

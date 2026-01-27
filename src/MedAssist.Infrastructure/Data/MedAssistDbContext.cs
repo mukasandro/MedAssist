@@ -19,6 +19,10 @@ public class MedAssistDbContext : DbContext
         modelBuilder.Entity<Doctor>(b =>
         {
             b.HasKey(x => x.Id);
+            b.HasMany(x => x.Patients)
+                .WithOne(x => x.Doctor)
+                .HasForeignKey(x => x.DoctorId)
+                .OnDelete(DeleteBehavior.Cascade);
             b.Property(x => x.SpecializationCodes).HasColumnType("text[]");
             b.Property(x => x.SpecializationTitles).HasColumnType("text[]");
             b.Property(x => x.TelegramUserId);

@@ -50,6 +50,8 @@ public static class DatabaseInitializer
         await EnsurePersonalDataColumnsAsync(dbContext, logger, cancellationToken);
         await EnsureSpecializationColumnsAsync(dbContext, logger, cancellationToken);
         await EnsureTelegramUserIdColumnAsync(dbContext, logger, cancellationToken);
+        await EnsureTelegramUsernameColumnRemovedAsync(dbContext, logger, cancellationToken);
+        await EnsureDoctorPatientForeignKeyAsync(dbContext, logger, cancellationToken);
         await EnsureRegistrationNicknameColumnAsync(dbContext, logger, cancellationToken);
         await EnsureRegistrationConfirmedColumnRemovedAsync(dbContext, logger, cancellationToken);
         await EnsureDoctorProfileColumnsRemovedAsync(dbContext, logger, cancellationToken);
@@ -98,6 +100,12 @@ public static class DatabaseInitializer
             );
 
             CREATE UNIQUE INDEX IF NOT EXISTS ""IX_StaticContents_Code"" ON ""StaticContents"" (""Code"");
+
+            INSERT INTO ""StaticContents"" (""Id"", ""Code"", ""Title"", ""Value"", ""UpdatedAt"")
+            VALUES
+                (gen_random_uuid(), 'eula', 'EULA', 'TODO: eula', now()),
+                (gen_random_uuid(), 'help', 'Help', 'TODO: help', now())
+            ON CONFLICT (""Code"") DO NOTHING;
         ";
 
         await dbContext.Database.ExecuteSqlRawAsync(sql, cancellationToken);
@@ -173,6 +181,50 @@ public static class DatabaseInitializer
 
         await dbContext.Database.ExecuteSqlRawAsync(sql, cancellationToken);
         logger?.LogInformation("Ensured Registration_Nickname column exists in Doctors table.");
+    }
+
+    private static async Task EnsureTelegramUsernameColumnRemovedAsync(
+        MedAssistDbContext dbContext,
+        ILogger? logger,
+        CancellationToken cancellationToken)
+    {
+        const string sql = @"
+            ALTER TABLE IF EXISTS ""Doctors""
+            DROP COLUMN IF EXISTS ""TelegramUsername"";
+        ";
+
+        await dbContext.Database.ExecuteSqlRawAsync(sql, cancellationToken);
+        logger?.LogInformation("Removed TelegramUsername column from Doctors table.");
+    }
+
+    private static async Task EnsureDoctorPatientForeignKeyAsync(
+        MedAssistDbContext dbContext,
+        ILogger? logger,
+        CancellationToken cancellationToken)
+    {
+        const string sql = @"
+            DELETE FROM ""Patients"" p
+            WHERE NOT EXISTS (
+                SELECT 1 FROM ""Doctors"" d WHERE d.""Id"" = p.""DoctorId""
+            );
+
+            DO $$
+            BEGIN
+                IF NOT EXISTS (
+                    SELECT 1
+                    FROM pg_constraint
+                    WHERE conname = 'FK_Patients_Doctors_DoctorId'
+                ) THEN
+                    ALTER TABLE ""Patients""
+                    ADD CONSTRAINT ""FK_Patients_Doctors_DoctorId""
+                    FOREIGN KEY (""DoctorId"") REFERENCES ""Doctors"" (""Id"")
+                    ON DELETE CASCADE;
+                END IF;
+            END $$;
+        ";
+
+        await dbContext.Database.ExecuteSqlRawAsync(sql, cancellationToken);
+        logger?.LogInformation("Ensured FK Patients.DoctorId -> Doctors.Id with cascade delete.");
     }
 
     private static async Task EnsureRegistrationConfirmedColumnRemovedAsync(

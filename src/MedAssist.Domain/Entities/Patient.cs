@@ -6,6 +6,7 @@ public class Patient
 {
     public Guid Id { get; init; }
     public Guid DoctorId { get; init; }
+    public Doctor Doctor { get; set; } = null!;
     public PatientSex? Sex { get; set; }
     public int? AgeYears { get; set; }
     public string? Nickname { get; set; }

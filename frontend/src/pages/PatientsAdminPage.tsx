@@ -152,6 +152,7 @@ export default function PatientsAdminPage() {
                   <th className="px-3 py-2 w-10"></th>
                   <th className="px-3 py-2">ID</th>
                   <th className="px-3 py-2">Никнейм</th>
+                  <th className="px-3 py-2">Доктор</th>
                   <th className="px-3 py-2">Пол</th>
                   <th className="px-3 py-2">Возраст</th>
                   <th className="px-3 py-2">Статус</th>
@@ -175,6 +176,7 @@ export default function PatientsAdminPage() {
                     </td>
                     <td className="px-3 py-2 font-medium text-textPrimary">{p.id}</td>
                     <td className="px-3 py-2 text-textSecondary">{p.nickname ?? '—'}</td>
+                    <td className="px-3 py-2 text-textSecondary">{p.doctorNickname ?? '—'}</td>
                     <td className="px-3 py-2 text-textSecondary">{p.sex ?? '—'}</td>
                     <td className="px-3 py-2 text-textSecondary">{p.ageYears ?? '—'}</td>
                     <td className="px-3 py-2">
@@ -310,6 +312,7 @@ export default function PatientsAdminPage() {
         {form ? (
           <div className="grid gap-3 md:grid-cols-2">
             <Input label="ДокторId" value={form.doctorId} readOnly />
+            <Input label="Никнейм доктора" value={form.doctorNickname ?? ''} readOnly />
             <Input
               label="Пол (0=М,1=Ж)"
               type="number"

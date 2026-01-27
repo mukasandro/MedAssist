@@ -22,6 +22,7 @@ public class Doctor
     public Guid? LastSelectedPatientId { get; set; }
     public string? Tags { get; set; }
     public List<Consent> Consents { get; set; } = new();
+    public List<Patient> Patients { get; set; } = new();
 
     public RegistrationStatus RegistrationStatus => Registration.Status;
 }

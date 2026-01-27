@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using MedAssist.Application.DTOs;
+using MedAssist.Application.Exceptions;
 using MedAssist.Application.Requests;
 using MedAssist.Application.Services;
 using MedAssist.Infrastructure.Data;
@@ -39,6 +40,19 @@ public class DoctorService : IDoctorService
         if (request.SpecializationCodes is not null)
         {
             await ApplySpecializationCodesAsync(doctor, request.SpecializationCodes, cancellationToken);
+        }
+        if (request.TelegramUserId.HasValue)
+        {
+            var telegramUserId = request.TelegramUserId.Value;
+            var exists = await _db.Doctors
+                .AsNoTracking()
+                .AnyAsync(d => d.TelegramUserId == telegramUserId && d.Id != doctor.Id, cancellationToken);
+            if (exists)
+            {
+                throw new ConflictException("Doctor with this Telegram user id already exists.");
+            }
+
+            doctor.TelegramUserId = telegramUserId;
         }
         if (request.Nickname is not null)
         {
