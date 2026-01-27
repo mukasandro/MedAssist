@@ -201,11 +201,6 @@ export default function DoctorsAdminPage() {
         {form ? (
           <div className="grid gap-3 md:grid-cols-2">
             <Input
-              label="Специализация"
-              value={form.specializationTitle}
-              onChange={(e) => handleChange('specializationTitle', e.currentTarget.value)}
-            />
-            <Input
               label="Код специализации"
               value={form.specializationCode}
               onChange={(e) => handleChange('specializationCode', e.currentTarget.value)}
