@@ -7,9 +7,11 @@ public class UpsertRegistrationRequestValidator : AbstractValidator<UpsertRegist
 {
     public UpsertRegistrationRequestValidator()
     {
-        RuleFor(x => x.SpecializationCodes).NotEmpty();
-        RuleForEach(x => x.SpecializationCodes).NotEmpty().MaximumLength(100);
         RuleFor(x => x.TelegramUserId).GreaterThan(0);
         RuleFor(x => x.Nickname).MaximumLength(64);
+        RuleForEach(x => x.SpecializationCodes!)
+            .NotEmpty()
+            .MaximumLength(100)
+            .When(x => x.SpecializationCodes != null);
     }
 }

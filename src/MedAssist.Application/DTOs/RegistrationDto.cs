@@ -5,8 +5,7 @@ namespace MedAssist.Application.DTOs;
 
 public record RegistrationDto(
     RegistrationStatus Status,
-    IReadOnlyCollection<string> SpecializationCodes,
+    IReadOnlyCollection<SpecializationDto> Specializations,
     string? Nickname,
-    bool Confirmed,
     DateTimeOffset? StartedAt,
     long? TelegramUserId);

@@ -9,5 +9,5 @@ public interface IStaticContentService
     Task<StaticContentDto> CreateAsync(CreateStaticContentRequest request, CancellationToken cancellationToken);
     Task<StaticContentDto?> UpdateAsync(Guid id, UpdateStaticContentRequest request, CancellationToken cancellationToken);
     Task DeleteAsync(Guid id, CancellationToken cancellationToken);
-    Task<string?> GetValueAsync(string code, CancellationToken cancellationToken);
+    Task<StaticContentDto?> GetByCodeAsync(string code, CancellationToken cancellationToken);
 }

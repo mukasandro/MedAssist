@@ -9,6 +9,5 @@ public class Registration
     public List<string> SpecializationCodes { get; set; } = new();
     public List<string> SpecializationTitles { get; set; } = new();
     public string? Nickname { get; set; }
-    public bool Confirmed { get; set; }
     public DateTimeOffset? StartedAt { get; set; }
 }

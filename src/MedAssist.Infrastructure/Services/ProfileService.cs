@@ -25,7 +25,7 @@ public class ProfileService : IProfileService
 
     public async Task<ProfileDto?> GetAsync(long telegramUserId, CancellationToken cancellationToken)
     {
-        var doctor = await EnsureDoctorAsync(telegramUserId, cancellationToken);
+        var doctor = await GetDoctorAsync(telegramUserId, cancellationToken);
         return doctor is null ? null : ToDto(doctor);
     }
 
@@ -41,31 +41,12 @@ public class ProfileService : IProfileService
         }
 
         doctor.Registration ??= new Registration();
-        doctor.SpecializationCodes ??= new List<string>();
-        doctor.SpecializationTitles ??= new List<string>();
-        if (request.SpecializationCodes is not null)
-        {
-            doctor.SpecializationCodes = request.SpecializationCodes.ToList();
-            doctor.Registration.SpecializationCodes = doctor.SpecializationCodes.ToList();
-        }
-
-        if (request.SpecializationTitles is not null)
-        {
-            doctor.SpecializationTitles = request.SpecializationTitles.ToList();
-            doctor.Registration.SpecializationTitles = doctor.SpecializationTitles.ToList();
-        }
         if (request.Nickname is not null)
         {
-            doctor.Registration.Nickname = request.Nickname;
+            doctor.Registration.Nickname = string.IsNullOrWhiteSpace(request.Nickname)
+                ? null
+                : request.Nickname.Trim();
         }
-
-        if (request.LastSelectedPatientId.HasValue)
-        {
-            doctor.LastSelectedPatientId = request.LastSelectedPatientId;
-        }
-
-        doctor.Registration.SpecializationCodes = doctor.SpecializationCodes.ToList();
-        doctor.Registration.SpecializationTitles = doctor.SpecializationTitles.ToList();
 
         await _db.SaveChangesAsync(cancellationToken);
         return ToDto(doctor);
@@ -105,13 +86,9 @@ public class ProfileService : IProfileService
             return null;
         }
 
-        var doctor = await _db.Doctors.Include(d => d.Registration)
-            .FirstOrDefaultAsync(d => d.TelegramUserId == telegramUserId, cancellationToken);
-
+        var doctor = await GetDoctorAsync(telegramUserId, cancellationToken);
         if (doctor != null)
         {
-            doctor.SpecializationCodes ??= new List<string>();
-            doctor.SpecializationTitles ??= new List<string>();
             return doctor;
         }
 
@@ -132,6 +109,26 @@ public class ProfileService : IProfileService
         return doctor;
     }
 
+    private async Task<Domain.Entities.Doctor?> GetDoctorAsync(long telegramUserId, CancellationToken cancellationToken)
+    {
+        if (telegramUserId <= 0)
+        {
+            return null;
+        }
+
+        var doctor = await _db.Doctors.Include(d => d.Registration)
+            .FirstOrDefaultAsync(d => d.TelegramUserId == telegramUserId, cancellationToken);
+
+        if (doctor != null)
+        {
+            doctor.SpecializationCodes ??= new List<string>();
+            doctor.SpecializationTitles ??= new List<string>();
+            return doctor;
+        }
+
+        return null;
+    }
+
     private static ProfileDto ToDto(Domain.Entities.Doctor doctor)
     {
         doctor.Registration ??= new Registration();
@@ -139,12 +136,10 @@ public class ProfileService : IProfileService
         var titles = doctor.SpecializationTitles ?? new List<string>();
         return new(
             doctor.Id,
-            codes.AsReadOnly(),
-            titles.AsReadOnly(),
+            ToSpecializations(codes, titles),
             doctor.TelegramUserId,
             doctor.Registration.Nickname,
-            doctor.LastSelectedPatientId,
-            doctor.Verified);
+            doctor.LastSelectedPatientId);
     }
 
     private async Task<SpecializationDto?> GetSpecializationAsync(string code, CancellationToken cancellationToken)
@@ -157,5 +152,54 @@ public class ProfileService : IProfileService
         var specializations = await _referenceService.GetSpecializationsAsync(cancellationToken);
         return specializations.FirstOrDefault(s =>
             string.Equals(s.Code, code.Trim(), StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static IReadOnlyCollection<SpecializationDto> ToSpecializations(
+        IReadOnlyList<string> codes,
+        IReadOnlyList<string> titles)
+    {
+        var count = Math.Min(codes.Count, titles.Count);
+        var list = new List<SpecializationDto>(count);
+        for (var i = 0; i < count; i++)
+        {
+            list.Add(new SpecializationDto(codes[i], titles[i]));
+        }
+
+        return list.AsReadOnly();
+    }
+
+    private async Task ApplySpecializationCodesAsync(
+        Domain.Entities.Doctor doctor,
+        IReadOnlyCollection<string> codes,
+        CancellationToken cancellationToken)
+    {
+        var normalized = codes
+            .Where(code => !string.IsNullOrWhiteSpace(code))
+            .Select(code => code.Trim())
+            .ToList();
+
+        if (normalized.Count == 0)
+        {
+            doctor.SpecializationCodes = new List<string>();
+            doctor.SpecializationTitles = new List<string>();
+            return;
+        }
+
+        var known = await _referenceService.GetSpecializationsAsync(cancellationToken);
+        var map = known.ToDictionary(s => s.Code, s => s.Title, StringComparer.OrdinalIgnoreCase);
+
+        var titles = new List<string>(normalized.Count);
+        foreach (var code in normalized)
+        {
+            if (!map.TryGetValue(code, out var title))
+            {
+                throw new InvalidOperationException($"Specialization code not found: {code}");
+            }
+
+            titles.Add(title);
+        }
+
+        doctor.SpecializationCodes = normalized;
+        doctor.SpecializationTitles = titles;
     }
 }

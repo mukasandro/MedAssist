@@ -24,10 +24,16 @@ public class PatientsController : ControllerBase
     [SwaggerOperation(Summary = "Список пациентов", Description = "Все пациенты врача по Telegram user id из заголовка.")]
     [HttpGet]
     [ProducesResponseType(typeof(IReadOnlyCollection<PatientDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> GetList(
         [FromHeader(Name = "X-Telegram-User-Id")] long telegramUserId,
         CancellationToken cancellationToken)
     {
+        if (telegramUserId <= 0)
+        {
+            return BadRequest(new { error = "X-Telegram-User-Id header is required." });
+        }
+
         var patients = await _patientService.GetListAsync(telegramUserId, cancellationToken);
         return Ok(patients);
     }
@@ -36,11 +42,17 @@ public class PatientsController : ControllerBase
     [HttpGet("{id:guid}")]
     [ProducesResponseType(typeof(PatientDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Get(
         [FromHeader(Name = "X-Telegram-User-Id")] long telegramUserId,
         Guid id,
         CancellationToken cancellationToken)
     {
+        if (telegramUserId <= 0)
+        {
+            return BadRequest(new { error = "X-Telegram-User-Id header is required." });
+        }
+
         var patient = await _patientService.GetAsync(telegramUserId, id, cancellationToken);
         return patient is null ? NotFound() : Ok(patient);
     }
@@ -49,11 +61,17 @@ public class PatientsController : ControllerBase
     [HttpPost]
     [ProducesResponseType(typeof(PatientDto), StatusCodes.Status201Created)]
     [SwaggerRequestExample(typeof(CreatePatientRequest), typeof(CreatePatientRequestExample))]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Create(
         [FromHeader(Name = "X-Telegram-User-Id")] long telegramUserId,
         [FromBody] CreatePatientRequest request,
         CancellationToken cancellationToken)
     {
+        if (telegramUserId <= 0)
+        {
+            return BadRequest(new { error = "X-Telegram-User-Id header is required." });
+        }
+
         var patient = await _patientService.CreateAsync(telegramUserId, request, cancellationToken);
         if (patient is null)
         {
@@ -63,14 +81,41 @@ public class PatientsController : ControllerBase
         return CreatedAtAction(nameof(Get), new { id = patient.Id }, patient);
     }
 
+    [SwaggerOperation(Summary = "Обновить пациента", Description = "Частичное обновление данных пациента.")]
+    [HttpPatch("{id:guid}")]
+    [ProducesResponseType(typeof(PatientDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [SwaggerRequestExample(typeof(UpdatePatientRequest), typeof(UpdatePatientRequestExample))]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> Update(
+        [FromHeader(Name = "X-Telegram-User-Id")] long telegramUserId,
+        Guid id,
+        [FromBody] UpdatePatientRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (telegramUserId <= 0)
+        {
+            return BadRequest(new { error = "X-Telegram-User-Id header is required." });
+        }
+
+        var patient = await _patientService.UpdateAsync(telegramUserId, id, request, cancellationToken);
+        return patient is null ? NotFound() : Ok(patient);
+    }
+
     [SwaggerOperation(Summary = "Удалить пациента", Description = "Удаляет пациента врача.")]
     [HttpDelete("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Delete(
         [FromHeader(Name = "X-Telegram-User-Id")] long telegramUserId,
         Guid id,
         CancellationToken cancellationToken)
     {
+        if (telegramUserId <= 0)
+        {
+            return BadRequest(new { error = "X-Telegram-User-Id header is required." });
+        }
+
         await _patientService.DeleteAsync(telegramUserId, id, cancellationToken);
         return NoContent();
     }
@@ -78,11 +123,17 @@ public class PatientsController : ControllerBase
     [SwaggerOperation(Summary = "Установить активного пациента", Description = "Устанавливает активного пациента у доктора.")]
     [HttpPost("{id:guid}/setactive")]
     [ProducesResponseType(typeof(ProfileDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> SetActive(
         [FromHeader(Name = "X-Telegram-User-Id")] long telegramUserId,
         Guid id,
         CancellationToken cancellationToken)
     {
+        if (telegramUserId <= 0)
+        {
+            return BadRequest(new { error = "X-Telegram-User-Id header is required." });
+        }
+
         var profile = await _patientService.SelectAsync(telegramUserId, id, cancellationToken);
         return profile is null ? NotFound() : Ok(profile);
     }

@@ -5,24 +5,21 @@ export type PatientStatus = 0 | 1 // Inactive=0, Active=1
 
 export interface RegistrationDto {
   status: RegistrationStatus
-  specializationCodes: string[]
+  specializations: SpecializationDto[]
   nickname?: string | null
-  confirmed: boolean
   startedAt?: string | null
   telegramUserId?: number | null
 }
 
 export interface UpsertRegistrationRequest {
-  specializationCodes: string[]
+  specializationCodes?: string[] | null
   telegramUserId: number
   nickname?: string | null
-  confirmed: boolean
 }
 
 export interface ProfileDto {
   doctorId: string
-  specializationCodes: string[]
-  specializationTitles: string[]
+  specializations: SpecializationDto[]
   telegramUserId?: number | null
   nickname?: string | null
   lastSelectedPatientId?: string | null
@@ -30,10 +27,7 @@ export interface ProfileDto {
 }
 
 export interface UpdateProfileRequest {
-  specializationCodes?: string[] | null
-  specializationTitles?: string[] | null
   nickname?: string | null
-  lastSelectedPatientId?: string | null
 }
 
 export interface PatientDto {
@@ -60,6 +54,17 @@ export interface CreatePatientRequest {
   status?: PatientStatus | null
 }
 
+export interface UpdatePatientRequest {
+  sex?: PatientSex | null
+  ageYears?: number | null
+  nickname?: string | null
+  allergies?: string | null
+  chronicConditions?: string | null
+  tags?: string | null
+  notes?: string | null
+  status?: PatientStatus | null
+}
+
 export interface SpecializationDto {
   code: string
   title: string
@@ -67,8 +72,7 @@ export interface SpecializationDto {
 
 export interface DoctorPublicDto {
   id: string
-  specializationCodes: string[]
-  specializationTitles: string[]
+  specializations: SpecializationDto[]
   telegramUserId?: number | null
   nickname?: string | null
   verified: boolean
@@ -76,7 +80,6 @@ export interface DoctorPublicDto {
 
 export interface UpdateDoctorRequest {
   specializationCodes?: string[] | null
-  specializationTitles?: string[] | null
   nickname?: string | null
   verified: boolean
 }

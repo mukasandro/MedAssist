@@ -12,7 +12,6 @@ import { Modal } from '../components/Modal'
 type DoctorForm = {
   id: string
   specializationCode: string
-  specializationTitle: string
   telegramUserId?: number | null
   nickname?: string | null
   verified: boolean
@@ -59,7 +58,6 @@ export default function DoctorsAdminPage() {
     setForm({
       id: 'new',
       specializationCode: '',
-      specializationTitle: '',
       telegramUserId: null,
       nickname: '',
       verified: false,
@@ -73,8 +71,7 @@ export default function DoctorsAdminPage() {
     setSelectedIds((prev) => (prev.includes(id) ? prev : [...prev, id]))
     setForm({
       id: doc.id,
-      specializationCode: doc.specializationCodes?.[0] ?? '',
-      specializationTitle: doc.specializationTitles?.[0] ?? '',
+      specializationCode: doc.specializations?.[0]?.code ?? '',
       telegramUserId: doc.telegramUserId ?? null,
       nickname: doc.nickname ?? '',
       verified: doc.verified,
@@ -155,7 +152,7 @@ export default function DoctorsAdminPage() {
                     <td className="px-3 py-2 font-medium text-textPrimary">{d.id}</td>
                     <td className="px-3 py-2 text-textSecondary">{d.telegramUserId ?? '—'}</td>
                     <td className="px-3 py-2 text-textSecondary">{d.nickname ?? '—'}</td>
-                    <td className="px-3 py-2 text-textSecondary">{d.specializationTitles?.[0] ?? '—'}</td>
+                    <td className="px-3 py-2 text-textSecondary">{d.specializations?.[0]?.title ?? '—'}</td>
                     <td className="px-3 py-2">
                       <Badge
                         label={d.verified ? 'Верифицирован' : 'Не верифицирован'}
@@ -188,10 +185,8 @@ export default function DoctorsAdminPage() {
               onClick={() => {
                 if (!form || form.id === 'new') return
                 const code = form.specializationCode.trim()
-                const title = form.specializationTitle.trim()
                 const payload: UpdateDoctorRequest = {
-                  specializationCodes: code && title ? [code] : [],
-                  specializationTitles: code && title ? [title] : [],
+                  specializationCodes: code ? [code] : [],
                   nickname: form.nickname ?? null,
                   verified: form.verified,
                 }

@@ -48,15 +48,8 @@ public class DoctorsController : ControllerBase
         [FromBody] UpdateSpecializationRequest request,
         CancellationToken cancellationToken)
     {
-        try
-        {
-            var updated = await _doctorService.UpdateSpecializationAsync(id, request, cancellationToken);
-            return updated is null ? NotFound() : Ok(updated);
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { error = ex.Message });
-        }
+        var updated = await _doctorService.UpdateSpecializationAsync(id, request, cancellationToken);
+        return updated is null ? NotFound() : Ok(updated);
     }
 
     [HttpDelete("{id:guid}")]

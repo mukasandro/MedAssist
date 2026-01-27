@@ -6,9 +6,5 @@ namespace MedAssist.Api.Swagger.Examples;
 public class UpdateProfileRequestExample : IExamplesProvider<UpdateProfileRequest>
 {
     public UpdateProfileRequest GetExamples() =>
-        new(
-            SpecializationCodes: new[] { "cardiology" },
-            SpecializationTitles: new[] { "Кардиология" },
-            Nickname: "Доктор_кардио",
-            LastSelectedPatientId: Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"));
+        new(Nickname: "Доктор_кардио");
 }

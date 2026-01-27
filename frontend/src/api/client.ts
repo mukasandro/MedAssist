@@ -6,6 +6,7 @@ import {
   UpdateProfileRequest,
   PatientDto,
   CreatePatientRequest,
+  UpdatePatientRequest,
   SpecializationDto,
   DoctorPublicDto,
   UpdateDoctorRequest,
@@ -34,7 +35,7 @@ const api = axios.create({
 export const ApiClient = {
   // Registration
   upsertRegistration: (payload: UpsertRegistrationRequest) =>
-    api.put<RegistrationDto>('/v1/registration', payload).then((r) => r.data),
+    api.post<RegistrationDto>('/v1/registration', payload).then((r) => r.data),
 
   // Profile
   getProfile: (telegramUserId: string) =>
@@ -54,6 +55,10 @@ export const ApiClient = {
   createPatient: (telegramUserId: string, payload: CreatePatientRequest) =>
     api
       .post<PatientDto>('/v1/patients', payload, { headers: { 'X-Telegram-User-Id': telegramUserId } })
+      .then((r) => r.data),
+  updatePatient: (telegramUserId: string, id: string, payload: UpdatePatientRequest) =>
+    api
+      .patch<PatientDto>(`/v1/patients/${id}`, payload, { headers: { 'X-Telegram-User-Id': telegramUserId } })
       .then((r) => r.data),
   deletePatient: (telegramUserId: string, id: string) =>
     api.delete(`/v1/patients/${id}`, { headers: { 'X-Telegram-User-Id': telegramUserId } }),

@@ -34,15 +34,8 @@ public class StaticContentController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Create([FromBody] CreateStaticContentRequest request, CancellationToken cancellationToken)
     {
-        try
-        {
-            var created = await _staticContentService.CreateAsync(request, cancellationToken);
-            return StatusCode(StatusCodes.Status201Created, created);
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { error = ex.Message });
-        }
+        var created = await _staticContentService.CreateAsync(request, cancellationToken);
+        return StatusCode(StatusCodes.Status201Created, created);
     }
 
     [HttpPut("{id:guid}")]
@@ -52,15 +45,8 @@ public class StaticContentController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateStaticContentRequest request, CancellationToken cancellationToken)
     {
-        try
-        {
-            var updated = await _staticContentService.UpdateAsync(id, request, cancellationToken);
-            return updated is null ? NotFound() : Ok(updated);
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { error = ex.Message });
-        }
+        var updated = await _staticContentService.UpdateAsync(id, request, cancellationToken);
+        return updated is null ? NotFound() : Ok(updated);
     }
 
     [HttpDelete("{id:guid}")]

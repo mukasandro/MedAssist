@@ -1,3 +1,4 @@
+using MedAssist.Api.Middleware;
 using MedAssist.Api.Swagger;
 using MedAssist.Application;
 using MedAssist.Infrastructure;
@@ -82,6 +83,8 @@ builder.Services.AddCors(options =>
 });
 
 var app = builder.Build();
+
+app.UseMiddleware<ExceptionHandlingMiddleware>();
 
 if (app.Environment.IsDevelopment())
 {

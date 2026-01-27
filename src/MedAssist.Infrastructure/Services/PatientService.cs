@@ -80,6 +80,70 @@ public class PatientService : IPatientService
         return ToDto(patient);
     }
 
+    public async Task<PatientDto?> UpdateAsync(
+        long telegramUserId,
+        Guid id,
+        UpdatePatientRequest request,
+        CancellationToken cancellationToken)
+    {
+        var doctor = await GetDoctorAsync(telegramUserId, cancellationToken);
+        if (doctor is null)
+        {
+            return null;
+        }
+
+        var patient = await _db.Patients
+            .FirstOrDefaultAsync(p => p.Id == id && p.DoctorId == doctor.Id, cancellationToken);
+        if (patient is null)
+        {
+            return null;
+        }
+
+        if (request.Sex.HasValue)
+        {
+            patient.Sex = request.Sex;
+        }
+
+        if (request.AgeYears.HasValue)
+        {
+            patient.AgeYears = request.AgeYears;
+        }
+
+        if (request.Nickname is not null)
+        {
+            patient.Nickname = string.IsNullOrWhiteSpace(request.Nickname) ? null : request.Nickname.Trim();
+        }
+
+        if (request.Allergies is not null)
+        {
+            patient.Allergies = request.Allergies;
+        }
+
+        if (request.ChronicConditions is not null)
+        {
+            patient.ChronicConditions = request.ChronicConditions;
+        }
+
+        if (request.Tags is not null)
+        {
+            patient.Tags = request.Tags;
+        }
+
+        if (request.Notes is not null)
+        {
+            patient.Notes = request.Notes;
+        }
+
+        if (request.Status.HasValue)
+        {
+            patient.Status = request.Status.Value;
+        }
+
+        patient.UpdatedAt = DateTimeOffset.UtcNow;
+        await _db.SaveChangesAsync(cancellationToken);
+        return ToDto(patient);
+    }
+
     public async Task DeleteAsync(long telegramUserId, Guid id, CancellationToken cancellationToken)
     {
         var doctor = await GetDoctorAsync(telegramUserId, cancellationToken);
@@ -111,22 +175,22 @@ public class PatientService : IPatientService
 
         var patient = await _db.Patients
             .FirstOrDefaultAsync(p => p.Id == id && p.DoctorId == doctor.Id, cancellationToken);
-        if (patient != null)
+        if (patient is null)
         {
-            doctor.LastSelectedPatientId = id;
-            await _db.SaveChangesAsync(cancellationToken);
+            return null;
         }
+
+        doctor.LastSelectedPatientId = id;
+        await _db.SaveChangesAsync(cancellationToken);
 
         var codes = doctor.SpecializationCodes ?? new List<string>();
         var titles = doctor.SpecializationTitles ?? new List<string>();
         return new ProfileDto(
             doctor.Id,
-            codes.AsReadOnly(),
-            titles.AsReadOnly(),
+            ToSpecializations(codes, titles),
             doctor.TelegramUserId,
             doctor.Registration?.Nickname,
-            doctor.LastSelectedPatientId,
-            doctor.Verified);
+            doctor.LastSelectedPatientId);
     }
 
     private async Task<Domain.Entities.Doctor?> GetDoctorAsync(long telegramUserId, CancellationToken cancellationToken)
@@ -144,4 +208,18 @@ public class PatientService : IPatientService
     private static PatientDto ToDto(Domain.Entities.Patient patient) =>
         new(patient.Id, patient.Sex, patient.AgeYears, patient.Nickname, patient.Allergies, patient.ChronicConditions,
             patient.Tags, patient.Status, patient.Notes, patient.LastInteractionAt);
+
+    private static IReadOnlyCollection<SpecializationDto> ToSpecializations(
+        IReadOnlyList<string> codes,
+        IReadOnlyList<string> titles)
+    {
+        var count = Math.Min(codes.Count, titles.Count);
+        var list = new List<SpecializationDto>(count);
+        for (var i = 0; i < count; i++)
+        {
+            list.Add(new SpecializationDto(codes[i], titles[i]));
+        }
+
+        return list.AsReadOnly();
+    }
 }

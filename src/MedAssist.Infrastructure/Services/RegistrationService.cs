@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using MedAssist.Application.Exceptions;
 using MedAssist.Application.DTOs;
 using MedAssist.Application.Requests;
 using MedAssist.Application.Services;
@@ -13,21 +14,35 @@ namespace MedAssist.Infrastructure.Services;
 public class RegistrationService : IRegistrationService
 {
     private readonly MedAssistDbContext _db;
+    private readonly IReferenceService _referenceService;
 
-    public RegistrationService(MedAssistDbContext db)
+    public RegistrationService(MedAssistDbContext db, IReferenceService referenceService)
     {
         _db = db;
+        _referenceService = referenceService;
     }
 
     public async Task<RegistrationDto> UpsertAsync(UpsertRegistrationRequest request, CancellationToken cancellationToken)
     {
+        var existing = await _db.Doctors.AsNoTracking()
+            .AnyAsync(d => d.TelegramUserId == request.TelegramUserId, cancellationToken);
+        if (existing)
+        {
+            throw new ConflictException("Doctor with this Telegram user id already exists.");
+        }
+
         var doctor = await EnsureDoctorAsync(request.TelegramUserId, cancellationToken);
 
-        doctor.SpecializationCodes = request.SpecializationCodes.ToList();
+        if (request.SpecializationCodes is not null)
+        {
+            await ApplySpecializationCodesAsync(doctor, request.SpecializationCodes, cancellationToken);
+            doctor.Registration.SpecializationCodes = doctor.SpecializationCodes.ToList();
+            doctor.Registration.SpecializationTitles = doctor.SpecializationTitles.ToList();
+        }
         doctor.TelegramUserId = request.TelegramUserId;
-        doctor.Registration.SpecializationCodes = doctor.SpecializationCodes.ToList();
-        doctor.Registration.Nickname = request.Nickname;
-        doctor.Registration.Confirmed = request.Confirmed;
+        doctor.Registration.Nickname = string.IsNullOrWhiteSpace(request.Nickname)
+            ? null
+            : request.Nickname.Trim();
 
         if (doctor.Registration.Status == RegistrationStatus.NotStarted)
         {
@@ -41,13 +56,13 @@ public class RegistrationService : IRegistrationService
         return ToDto(doctor);
     }
 
-    public async Task<RegistrationDto?> UnregisterAsync(long telegramUserId, CancellationToken cancellationToken)
+    public async Task<bool> UnregisterAsync(long telegramUserId, CancellationToken cancellationToken)
     {
         var doctor = await _db.Doctors.Include(d => d.Registration)
             .FirstOrDefaultAsync(d => d.TelegramUserId == telegramUserId, cancellationToken);
         if (doctor is null)
         {
-            return null;
+            return false;
         }
 
         doctor.Registration ??= new Registration();
@@ -55,12 +70,11 @@ public class RegistrationService : IRegistrationService
         doctor.Registration.SpecializationCodes = new List<string>();
         doctor.Registration.SpecializationTitles = new List<string>();
         doctor.Registration.Nickname = null;
-        doctor.Registration.Confirmed = false;
         doctor.Registration.StartedAt = null;
         doctor.RegisteredAt = null;
 
         await _db.SaveChangesAsync(cancellationToken);
-        return ToDto(doctor);
+        return true;
     }
 
     private async Task<Domain.Entities.Doctor> EnsureDoctorAsync(long telegramUserId, CancellationToken cancellationToken)
@@ -72,6 +86,7 @@ public class RegistrationService : IRegistrationService
         {
             doctor.SpecializationCodes ??= new List<string>();
             doctor.Registration.SpecializationCodes ??= new List<string>();
+            doctor.Registration.SpecializationTitles ??= new List<string>();
             return doctor;
         }
 
@@ -89,6 +104,7 @@ public class RegistrationService : IRegistrationService
         await _db.SaveChangesAsync(cancellationToken);
         doctor.SpecializationCodes ??= new List<string>();
         doctor.Registration.SpecializationCodes ??= new List<string>();
+        doctor.Registration.SpecializationTitles ??= new List<string>();
         return doctor;
     }
 
@@ -96,11 +112,11 @@ public class RegistrationService : IRegistrationService
     {
         var reg = doctor.Registration;
         reg.SpecializationCodes ??= new List<string>();
+        reg.SpecializationTitles ??= new List<string>();
         return new RegistrationDto(
             reg.Status,
-            reg.SpecializationCodes.AsReadOnly(),
+            ToSpecializations(reg.SpecializationCodes, reg.SpecializationTitles),
             reg.Nickname,
-            reg.Confirmed,
             reg.StartedAt,
             doctor.TelegramUserId);
     }
@@ -114,7 +130,7 @@ public class RegistrationService : IRegistrationService
             return;
         }
 
-        if (reg.Confirmed && reg.SpecializationCodes.Count > 0)
+        if (reg.SpecializationCodes.Count > 0)
         {
             reg.Status = RegistrationStatus.Completed;
         }
@@ -123,5 +139,54 @@ public class RegistrationService : IRegistrationService
             reg.Status = RegistrationStatus.InProgress;
             reg.StartedAt ??= DateTimeOffset.UtcNow;
         }
+    }
+
+    private static IReadOnlyCollection<SpecializationDto> ToSpecializations(
+        IReadOnlyList<string> codes,
+        IReadOnlyList<string> titles)
+    {
+        var count = Math.Min(codes.Count, titles.Count);
+        var list = new List<SpecializationDto>(count);
+        for (var i = 0; i < count; i++)
+        {
+            list.Add(new SpecializationDto(codes[i], titles[i]));
+        }
+
+        return list.AsReadOnly();
+    }
+
+    private async Task ApplySpecializationCodesAsync(
+        Domain.Entities.Doctor doctor,
+        IReadOnlyCollection<string> codes,
+        CancellationToken cancellationToken)
+    {
+        var normalized = codes
+            .Where(code => !string.IsNullOrWhiteSpace(code))
+            .Select(code => code.Trim())
+            .ToList();
+
+        if (normalized.Count == 0)
+        {
+            doctor.SpecializationCodes = new List<string>();
+            doctor.SpecializationTitles = new List<string>();
+            return;
+        }
+
+        var known = await _referenceService.GetSpecializationsAsync(cancellationToken);
+        var map = known.ToDictionary(s => s.Code, s => s.Title, StringComparer.OrdinalIgnoreCase);
+
+        var titles = new List<string>(normalized.Count);
+        foreach (var code in normalized)
+        {
+            if (!map.TryGetValue(code, out var title))
+            {
+                throw new InvalidOperationException($"Specialization code not found: {code}");
+            }
+
+            titles.Add(title);
+        }
+
+        doctor.SpecializationCodes = normalized;
+        doctor.SpecializationTitles = titles;
     }
 }

@@ -4,8 +4,7 @@ namespace MedAssist.Application.DTOs;
 
 public record DoctorPublicDto(
     Guid Id,
-    IReadOnlyCollection<string> SpecializationCodes,
-    IReadOnlyCollection<string> SpecializationTitles,
+    IReadOnlyCollection<SpecializationDto> Specializations,
     long? TelegramUserId,
     string? Nickname,
     bool Verified);

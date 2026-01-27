@@ -38,11 +38,7 @@ public class DoctorService : IDoctorService
 
         if (request.SpecializationCodes is not null)
         {
-            doctor.SpecializationCodes = request.SpecializationCodes.ToList();
-        }
-        if (request.SpecializationTitles is not null)
-        {
-            doctor.SpecializationTitles = request.SpecializationTitles.ToList();
+            await ApplySpecializationCodesAsync(doctor, request.SpecializationCodes, cancellationToken);
         }
         if (request.Nickname is not null)
         {
@@ -51,8 +47,11 @@ public class DoctorService : IDoctorService
                 : request.Nickname.Trim();
         }
         doctor.Verified = request.Verified;
-        doctor.Registration.SpecializationCodes = doctor.SpecializationCodes.ToList();
-        doctor.Registration.SpecializationTitles = doctor.SpecializationTitles.ToList();
+        if (request.SpecializationCodes is not null)
+        {
+            doctor.Registration.SpecializationCodes = doctor.SpecializationCodes.ToList();
+            doctor.Registration.SpecializationTitles = doctor.SpecializationTitles.ToList();
+        }
 
         await _db.SaveChangesAsync(cancellationToken);
         return ToDto(doctor);
@@ -109,7 +108,6 @@ public class DoctorService : IDoctorService
                 Status = Domain.Enums.RegistrationStatus.Completed,
                 SpecializationCodes = new List<string> { "cardiology" },
                 SpecializationTitles = new List<string> { "Кардиология" },
-                Confirmed = true,
                 StartedAt = DateTimeOffset.UtcNow
             }
         };
@@ -135,7 +133,6 @@ public class DoctorService : IDoctorService
                     Status = Domain.Enums.RegistrationStatus.Completed,
                     SpecializationCodes = new List<string> { "therapy" },
                     SpecializationTitles = new List<string> { "Терапия" },
-                    Confirmed = true,
                     StartedAt = DateTimeOffset.UtcNow
                 }
             });
@@ -147,7 +144,7 @@ public class DoctorService : IDoctorService
     {
         var codes = d.SpecializationCodes ?? new List<string>();
         var titles = d.SpecializationTitles ?? new List<string>();
-        return new(d.Id, codes.AsReadOnly(), titles.AsReadOnly(), d.TelegramUserId, d.Registration?.Nickname, d.Verified);
+        return new(d.Id, ToSpecializations(codes, titles), d.TelegramUserId, d.Registration?.Nickname, d.Verified);
     }
 
     private async Task<SpecializationDto?> GetSpecializationAsync(string code, CancellationToken cancellationToken)
@@ -160,5 +157,54 @@ public class DoctorService : IDoctorService
         var specializations = await _referenceService.GetSpecializationsAsync(cancellationToken);
         return specializations.FirstOrDefault(s =>
             string.Equals(s.Code, code.Trim(), StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static IReadOnlyCollection<SpecializationDto> ToSpecializations(
+        IReadOnlyList<string> codes,
+        IReadOnlyList<string> titles)
+    {
+        var count = Math.Min(codes.Count, titles.Count);
+        var list = new List<SpecializationDto>(count);
+        for (var i = 0; i < count; i++)
+        {
+            list.Add(new SpecializationDto(codes[i], titles[i]));
+        }
+
+        return list.AsReadOnly();
+    }
+
+    private async Task ApplySpecializationCodesAsync(
+        Domain.Entities.Doctor doctor,
+        IReadOnlyCollection<string> codes,
+        CancellationToken cancellationToken)
+    {
+        var normalized = codes
+            .Where(code => !string.IsNullOrWhiteSpace(code))
+            .Select(code => code.Trim())
+            .ToList();
+
+        if (normalized.Count == 0)
+        {
+            doctor.SpecializationCodes = new List<string>();
+            doctor.SpecializationTitles = new List<string>();
+            return;
+        }
+
+        var known = await _referenceService.GetSpecializationsAsync(cancellationToken);
+        var map = known.ToDictionary(s => s.Code, s => s.Title, StringComparer.OrdinalIgnoreCase);
+
+        var titles = new List<string>(normalized.Count);
+        foreach (var code in normalized)
+        {
+            if (!map.TryGetValue(code, out var title))
+            {
+                throw new InvalidOperationException($"Specialization code not found: {code}");
+            }
+
+            titles.Add(title);
+        }
+
+        doctor.SpecializationCodes = normalized;
+        doctor.SpecializationTitles = titles;
     }
 }

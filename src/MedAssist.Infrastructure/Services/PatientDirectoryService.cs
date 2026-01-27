@@ -100,7 +100,6 @@ public class PatientDirectoryService : IPatientDirectoryService
                     Status = Domain.Enums.RegistrationStatus.Completed,
                     SpecializationCodes = new List<string> { "therapy" },
                     SpecializationTitles = new List<string> { "Терапия" },
-                    Confirmed = true,
                     StartedAt = DateTimeOffset.UtcNow
                 }
             });

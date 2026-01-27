@@ -50,7 +50,8 @@ public static class DatabaseInitializer
         await EnsurePersonalDataColumnsAsync(dbContext, logger, cancellationToken);
         await EnsureSpecializationColumnsAsync(dbContext, logger, cancellationToken);
         await EnsureTelegramUserIdColumnAsync(dbContext, logger, cancellationToken);
-        await EnsureRegistrationConfirmedColumnAsync(dbContext, logger, cancellationToken);
+        await EnsureRegistrationNicknameColumnAsync(dbContext, logger, cancellationToken);
+        await EnsureRegistrationConfirmedColumnRemovedAsync(dbContext, logger, cancellationToken);
         await EnsureDoctorProfileColumnsRemovedAsync(dbContext, logger, cancellationToken);
         await EnsureStaticContentTableAsync(dbContext, logger, cancellationToken);
     }
@@ -160,37 +161,33 @@ public static class DatabaseInitializer
         logger?.LogInformation("Ensured TelegramUserId column exists in Doctors table.");
     }
 
-    private static async Task EnsureRegistrationConfirmedColumnAsync(
+    private static async Task EnsureRegistrationNicknameColumnAsync(
         MedAssistDbContext dbContext,
         ILogger? logger,
         CancellationToken cancellationToken)
     {
         const string sql = @"
             ALTER TABLE IF EXISTS ""Doctors""
-            ADD COLUMN IF NOT EXISTS ""Registration_Confirmed"" boolean NOT NULL DEFAULT false,
             ADD COLUMN IF NOT EXISTS ""Registration_Nickname"" text NULL;
-
-            DO $$
-            BEGIN
-                IF EXISTS (
-                    SELECT 1
-                    FROM information_schema.columns
-                    WHERE table_schema = 'public'
-                      AND table_name = 'Doctors'
-                      AND column_name = 'Registration_HumanInLoopConfirmed'
-                ) THEN
-                    UPDATE ""Doctors""
-                    SET ""Registration_Confirmed"" = ""Registration_HumanInLoopConfirmed""
-                    WHERE ""Registration_Confirmed"" IS DISTINCT FROM ""Registration_HumanInLoopConfirmed"";
-
-                    ALTER TABLE ""Doctors""
-                    DROP COLUMN ""Registration_HumanInLoopConfirmed"";
-                END IF;
-            END $$;
         ";
 
         await dbContext.Database.ExecuteSqlRawAsync(sql, cancellationToken);
-        logger?.LogInformation("Ensured Registration_Confirmed column exists in Doctors table.");
+        logger?.LogInformation("Ensured Registration_Nickname column exists in Doctors table.");
+    }
+
+    private static async Task EnsureRegistrationConfirmedColumnRemovedAsync(
+        MedAssistDbContext dbContext,
+        ILogger? logger,
+        CancellationToken cancellationToken)
+    {
+        const string sql = @"
+            ALTER TABLE IF EXISTS ""Doctors""
+            DROP COLUMN IF EXISTS ""Registration_Confirmed"",
+            DROP COLUMN IF EXISTS ""Registration_HumanInLoopConfirmed"";
+        ";
+
+        await dbContext.Database.ExecuteSqlRawAsync(sql, cancellationToken);
+        logger?.LogInformation("Removed registration confirmation columns from Doctors table.");
     }
 
     private static async Task EnsureDoctorProfileColumnsRemovedAsync(

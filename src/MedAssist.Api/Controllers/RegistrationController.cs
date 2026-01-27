@@ -24,7 +24,7 @@ public class RegistrationController : ControllerBase
     [SwaggerOperation(
         Summary = "Заполнить регистрацию врача",
         Description = "Создает регистрацию врача на основе предоставленных данных.")]
-    [HttpPut]
+    [HttpPost]
     [ProducesResponseType(typeof(RegistrationDto), StatusCodes.Status200OK)]
     [SwaggerRequestExample(typeof(UpsertRegistrationRequest), typeof(UpsertRegistrationRequestExample))]
     public async Task<IActionResult> Upsert([FromBody] UpsertRegistrationRequest request, CancellationToken cancellationToken)
@@ -35,7 +35,7 @@ public class RegistrationController : ControllerBase
 
     [SwaggerOperation(Summary = "Отменить регистрацию", Description = "Удаляет регистрацию врача по идентификатору Telegram пользователя.")]
     [HttpDelete]
-    [ProducesResponseType(typeof(RegistrationDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Unregister(
         [FromHeader(Name = "X-Telegram-User-Id")] long telegramUserId,
@@ -47,6 +47,6 @@ public class RegistrationController : ControllerBase
         }
 
         var result = await _registrationService.UnregisterAsync(telegramUserId, cancellationToken);
-        return result is null ? NotFound() : Ok(result);
+        return result ? Ok() : NotFound();
     }
 }

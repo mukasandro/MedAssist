@@ -9,6 +9,5 @@ public class UpsertRegistrationRequestExample : IExamplesProvider<UpsertRegistra
         new(
             SpecializationCodes: new[] { "cardiology" },
             TelegramUserId: 123456789,
-            Nickname: "Доктор_кардио",
-            Confirmed: true);
+            Nickname: "Доктор_кардио");
 }

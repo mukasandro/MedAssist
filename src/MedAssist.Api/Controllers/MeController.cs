@@ -38,7 +38,7 @@ public class MeController : ControllerBase
         return profile is null ? NotFound() : Ok(profile);
     }
 
-    [SwaggerOperation(Summary = "Обновить профиль", Description = "Изменить никнейм и/или выбрать текущего пациента.")]
+    [SwaggerOperation(Summary = "Обновить профиль", Description = "Изменить никнейм")]
     [HttpPatch]
     [ProducesResponseType(typeof(ProfileDto), StatusCodes.Status200OK)]
     [SwaggerRequestExample(typeof(UpdateProfileRequest), typeof(UpdateProfileRequestExample))]
@@ -71,14 +71,7 @@ public class MeController : ControllerBase
             return BadRequest(new { error = "X-Telegram-User-Id header is required." });
         }
 
-        try
-        {
-            var profile = await _profileService.UpdateSpecializationAsync(telegramUserId, request, cancellationToken);
-            return profile is null ? NotFound() : Ok(profile);
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { error = ex.Message });
-        }
+        var profile = await _profileService.UpdateSpecializationAsync(telegramUserId, request, cancellationToken);
+        return profile is null ? NotFound() : Ok(profile);
     }
 }

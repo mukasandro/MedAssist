@@ -81,7 +81,7 @@ public class StaticContentService : IStaticContentService
         }
     }
 
-    public async Task<string?> GetValueAsync(string code, CancellationToken cancellationToken)
+    public async Task<StaticContentDto?> GetByCodeAsync(string code, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(code))
         {
@@ -93,7 +93,7 @@ public class StaticContentService : IStaticContentService
             .AsNoTracking()
             .FirstOrDefaultAsync(x => x.Code == normalizedCode, cancellationToken);
 
-        return entity?.Value;
+        return entity is null ? null : ToDto(entity);
     }
 
     private static string NormalizeCode(string code) =>
@@ -103,5 +103,5 @@ public class StaticContentService : IStaticContentService
         string.IsNullOrWhiteSpace(title) ? null : title.Trim();
 
     private static StaticContentDto ToDto(Domain.Entities.StaticContent entity) =>
-        new(entity.Id, entity.Code, entity.Title, entity.Value, entity.UpdatedAt);
+        new( entity.Code, entity.Value);
 }
