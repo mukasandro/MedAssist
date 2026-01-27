@@ -53,9 +53,13 @@ public sealed class ExceptionHandlingMiddleware
         {
             Status = status,
             Title = title,
-            Detail =  exception.Message ,
+            Detail = exception.Message,
             Instance = context.Request.Path
         };
+        if (exception.InnerException is not null)
+        {
+            details.Extensions["innerError"] = exception.InnerException.Message;
+        }
 
         _logger.LogError(exception, "Unhandled exception");
 
