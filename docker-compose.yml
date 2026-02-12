@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   api:
     build:
@@ -38,18 +36,42 @@ services:
       timeout: 5s
       retries: 5
 
+
+  llm-gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile.llm-gateway
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      DOTNET_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8090
+      LlmGateway__DeepSeek__BaseUrl: ${DEEPSEEK_BASE_URL:-https://api.deepseek.com}
+      LlmGateway__DeepSeek__ApiKey: ${DEEPSEEK_API_KEY:?DEEPSEEK_API_KEY is required}
+      LlmGateway__DeepSeek__DefaultModel: ${DEEPSEEK_DEFAULT_MODEL:-deepseek-chat}
+      LlmGateway__RequestTimeoutMs: ${DEEPSEEK_REQUEST_TIMEOUT_MS:-60000}
+    ports:
+      - "8090:8090"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8090/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
       args:
         VITE_API_URL: ${VITE_API_URL:-http://muk.i234.me:5555}
+        VITE_LLM_GATEWAY_URL: ${VITE_LLM_GATEWAY_URL:-http://muk.i234.me:8090}
     environment:
       VITE_API_URL: ${VITE_API_URL:-http://muk.i234.me:5555}
+      VITE_LLM_GATEWAY_URL: ${VITE_LLM_GATEWAY_URL:-http://muk.i234.me:8090}
     ports:
       - "4173:80"
     depends_on:
       - api
+      - llm-gateway
 
 volumes:
   postgres_data:

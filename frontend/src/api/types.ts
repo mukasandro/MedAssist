@@ -143,3 +143,21 @@ export interface UpdatePatientDirectoryRequest {
   status: PatientStatus
   notes?: string | null
 }
+
+export interface LlmGenerateRequest {
+  prompt: string
+  model?: string | null
+  systemPrompt?: string | null
+  temperature?: number | null
+  maxTokens?: number | null
+}
+
+export interface LlmGenerateResponse {
+  provider: string
+  model: string
+  content: string
+  finishReason?: string | null
+  promptTokens?: number | null
+  completionTokens?: number | null
+  requestId?: string | null
+}

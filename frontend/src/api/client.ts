@@ -17,6 +17,8 @@ import {
   UpdateStaticContentRequest,
   PatientDirectoryDto,
   UpdatePatientDirectoryRequest,
+  LlmGenerateRequest,
+  LlmGenerateResponse,
 } from './types'
 
 const resolveBaseUrl = () => {
@@ -32,6 +34,21 @@ const resolveBaseUrl = () => {
 
 const api = axios.create({
   baseURL: resolveBaseUrl(),
+})
+
+const resolveLlmGatewayBaseUrl = () => {
+  const envUrl = import.meta.env.VITE_LLM_GATEWAY_URL
+  if (envUrl) return envUrl
+  if (typeof window !== 'undefined') {
+    const { origin } = window.location
+    const host = origin.replace(/:\d+$/, '')
+    return `${host}:8090`
+  }
+  return 'http://localhost:8090'
+}
+
+const llmApi = axios.create({
+  baseURL: resolveLlmGatewayBaseUrl(),
 })
 
 export const ApiClient = {
@@ -103,6 +120,10 @@ export const ApiClient = {
   deletePatientDirectory: (id: string) => api.delete(`/v1/patient-directory/${id}`),
   createPatientDirectoryTest: () => api.post<PatientDirectoryDto>('/v1/patient-directory/test', {}).then((r) => r.data),
   createDoctorTest: () => api.post<DoctorPublicDto>('/v1/doctors/test', {}).then((r) => r.data),
+
+  // LLM gateway
+  generateLlm: (payload: LlmGenerateRequest) =>
+    llmApi.post<LlmGenerateResponse>('/v1/generate', payload).then((r) => r.data),
 }
 
 export default api

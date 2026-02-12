@@ -1,0 +1,15 @@
+@host = http://localhost:8090
+
+GET {{host}}/health
+
+###
+POST {{host}}/v1/generate
+Content-Type: application/json
+
+{
+  "prompt": "Say hello",
+  "model": "deepseek-chat",
+  "systemPrompt": "You are helpful.",
+  "temperature": 0.3,
+  "maxTokens": 200
+}

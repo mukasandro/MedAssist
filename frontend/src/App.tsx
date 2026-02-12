@@ -6,11 +6,13 @@ import DashboardPage from './pages/DashboardPage'
 import DoctorsAdminPage from './pages/DoctorsAdminPage'
 import PatientsAdminPage from './pages/PatientsAdminPage'
 import StaticContentAdminPage from './pages/StaticContentAdminPage'
+import LlmGatewayPage from './pages/LlmGatewayPage'
 
 const navItems = [
   { key: 'dashboard', label: 'Обзор', icon: '📊' },
   { key: 'reference', label: 'Справочники', icon: '📚' },
   { key: 'static-content', label: 'Статика', icon: '🧩' },
+  { key: 'llm-gateway', label: 'LLM Gateway', icon: '🧠' },
   { key: 'doctors', label: 'Врачи', icon: '🛡️' },
   { key: 'patients-admin', label: 'Пациенты (админ)', icon: '🛡️' },
 ]
@@ -31,6 +33,8 @@ function App() {
         return <ReferencePage />
       case 'static-content':
         return <StaticContentAdminPage />
+      case 'llm-gateway':
+        return <LlmGatewayPage />
       case 'doctors':
         return <DoctorsAdminPage />
       case 'patients-admin':

@@ -29,6 +29,7 @@ MVP REST API для врачебных сценариев (регистраци�
 ## Локальный запуск
 ```bash
 export ConnectionStrings__Default="Host=localhost;Port=5432;Database=medassist;Username=medassist;Password=medassist"
+export LlmGateway__DeepSeek__ApiKey="your_deepseek_api_key"
 dotnet restore
 dotnet run --project src/MedAssist.Api
 # Swagger UI: http://localhost:5142/swagger (выберите Admin или Bot в списке)
@@ -36,6 +37,9 @@ dotnet run --project src/MedAssist.Api
 
 ## Запуск в контейнерах
 ```bash
+cp .env.example .env
+# укажи реальный ключ:
+# DEEPSEEK_API_KEY=...
 docker compose build
 docker compose up
 # API: http://localhost:8080/swagger (выберите Admin или Bot в списке)
