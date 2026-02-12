@@ -26,7 +26,7 @@ public class ProfileService : IProfileService
     public async Task<ProfileDto?> GetAsync(long telegramUserId, CancellationToken cancellationToken)
     {
         var doctor = await GetDoctorAsync(telegramUserId, cancellationToken);
-        return doctor is null ? null : ToDto(doctor);
+        return doctor is null ? null : await ToDtoAsync(doctor, cancellationToken);
     }
 
     public async Task<ProfileDto?> UpdateAsync(
@@ -49,7 +49,7 @@ public class ProfileService : IProfileService
         }
 
         await _db.SaveChangesAsync(cancellationToken);
-        return ToDto(doctor);
+        return await ToDtoAsync(doctor, cancellationToken);
     }
 
     public async Task<ProfileDto?> UpdateSpecializationAsync(
@@ -76,7 +76,44 @@ public class ProfileService : IProfileService
         doctor.Registration.SpecializationTitles = doctor.SpecializationTitles.ToList();
 
         await _db.SaveChangesAsync(cancellationToken);
-        return ToDto(doctor);
+        return await ToDtoAsync(doctor, cancellationToken);
+    }
+
+    public async Task<bool> SetActivePatientAsync(
+        long telegramUserId,
+        Guid patientId,
+        CancellationToken cancellationToken)
+    {
+        var doctor = await GetDoctorAsync(telegramUserId, cancellationToken);
+        if (doctor is null)
+        {
+            return false;
+        }
+
+        var patientExists = await _db.Patients
+            .AsNoTracking()
+            .AnyAsync(p => p.Id == patientId && p.DoctorId == doctor.Id, cancellationToken);
+        if (!patientExists)
+        {
+            return false;
+        }
+
+        doctor.LastSelectedPatientId = patientId;
+        await _db.SaveChangesAsync(cancellationToken);
+        return true;
+    }
+
+    public async Task<bool> ClearActivePatientAsync(long telegramUserId, CancellationToken cancellationToken)
+    {
+        var doctor = await GetDoctorAsync(telegramUserId, cancellationToken);
+        if (doctor is null)
+        {
+            return false;
+        }
+
+        doctor.LastSelectedPatientId = null;
+        await _db.SaveChangesAsync(cancellationToken);
+        return true;
     }
 
     private async Task<Domain.Entities.Doctor?> EnsureDoctorAsync(long telegramUserId, CancellationToken cancellationToken)
@@ -129,17 +166,29 @@ public class ProfileService : IProfileService
         return null;
     }
 
-    private static ProfileDto ToDto(Domain.Entities.Doctor doctor)
+    private async Task<ProfileDto> ToDtoAsync(Domain.Entities.Doctor doctor, CancellationToken cancellationToken)
     {
         doctor.Registration ??= new Registration();
         var codes = doctor.SpecializationCodes ?? new List<string>();
         var titles = doctor.SpecializationTitles ?? new List<string>();
+
+        string? lastSelectedPatientNickname = null;
+        if (doctor.LastSelectedPatientId.HasValue)
+        {
+            lastSelectedPatientNickname = await _db.Patients
+                .AsNoTracking()
+                .Where(p => p.Id == doctor.LastSelectedPatientId.Value && p.DoctorId == doctor.Id)
+                .Select(p => p.Nickname)
+                .FirstOrDefaultAsync(cancellationToken);
+        }
+
         return new(
             doctor.Id,
             ToSpecializations(codes, titles),
             doctor.TelegramUserId,
             doctor.Registration.Nickname,
-            doctor.LastSelectedPatientId);
+            doctor.LastSelectedPatientId,
+            lastSelectedPatientNickname);
     }
 
     private async Task<SpecializationDto?> GetSpecializationAsync(string code, CancellationToken cancellationToken)

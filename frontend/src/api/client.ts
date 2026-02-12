@@ -4,6 +4,7 @@ import {
   UpsertRegistrationRequest,
   ProfileDto,
   UpdateProfileRequest,
+  SetActivePatientRequest,
   PatientDto,
   CreatePatientRequest,
   UpdatePatientRequest,
@@ -11,6 +12,7 @@ import {
   DoctorPublicDto,
   UpdateDoctorRequest,
   StaticContentDto,
+  StaticContentItemDto,
   CreateStaticContentRequest,
   UpdateStaticContentRequest,
   PatientDirectoryDto,
@@ -63,7 +65,17 @@ export const ApiClient = {
   deletePatient: (telegramUserId: string, id: string) =>
     api.delete(`/v1/patients/${id}`, { headers: { 'X-Telegram-User-Id': telegramUserId } }),
   setActivePatient: (telegramUserId: string, id: string) =>
-    api.post(`/v1/patients/${id}/setactive`, null, { headers: { 'X-Telegram-User-Id': telegramUserId } }),
+    api
+      .put(
+        '/v1/me/active-patient',
+        { patientId: id } satisfies SetActivePatientRequest,
+        { headers: { 'X-Telegram-User-Id': telegramUserId } }
+      )
+      .then(() => undefined),
+  clearActivePatient: (telegramUserId: string) =>
+    api
+      .delete('/v1/me/active-patient', { headers: { 'X-Telegram-User-Id': telegramUserId } })
+      .then(() => undefined),
 
   // Reference
   getSpecializations: () => api.get<SpecializationDto[]>('/v1/reference/specializations').then((r) => r.data),
@@ -75,7 +87,8 @@ export const ApiClient = {
   updateStaticContent: (id: string, payload: UpdateStaticContentRequest) =>
     api.put<StaticContentDto>(`/v1/static-content/${id}`, payload).then((r) => r.data),
   deleteStaticContent: (id: string) => api.delete(`/v1/static-content/${id}`),
-  getStaticContentValue: (code: string) => api.get<string>(`/v1/static-content/${code}`).then((r) => r.data),
+  getStaticContentValue: (code: string) =>
+    api.get<StaticContentItemDto>(`/v1/static-content/${code}`).then((r) => r.data),
 
   // Directory
   getDoctors: () => api.get<DoctorPublicDto[]>('/v1/doctors').then((r) => r.data),

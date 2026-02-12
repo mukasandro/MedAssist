@@ -21,7 +21,7 @@ public class StaticContentController : ControllerBase
 
     [HttpGet]
     [SwaggerOperation(Summary = "Список статичных текстов", Description = "Все записи для админки (код, заголовок, текст).")]
-    [ProducesResponseType(typeof(IReadOnlyCollection<StaticContentDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(IReadOnlyCollection<StaticContentAdminDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetList(CancellationToken cancellationToken)
     {
         var items = await _staticContentService.GetListAsync(cancellationToken);
@@ -30,7 +30,7 @@ public class StaticContentController : ControllerBase
 
     [HttpPost]
     [SwaggerOperation(Summary = "Создать статичный текст", Description = "Создает новую запись для выдачи через API по коду.")]
-    [ProducesResponseType(typeof(StaticContentDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(StaticContentAdminDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Create([FromBody] CreateStaticContentRequest request, CancellationToken cancellationToken)
     {
@@ -40,7 +40,7 @@ public class StaticContentController : ControllerBase
 
     [HttpPut("{id:guid}")]
     [SwaggerOperation(Summary = "Обновить статичный текст", Description = "Редактирует код, заголовок или текст.")]
-    [ProducesResponseType(typeof(StaticContentDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(StaticContentAdminDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateStaticContentRequest request, CancellationToken cancellationToken)

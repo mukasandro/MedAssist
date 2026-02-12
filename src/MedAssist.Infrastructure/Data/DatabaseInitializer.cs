@@ -57,6 +57,7 @@ public static class DatabaseInitializer
         await EnsureRegistrationConfirmedColumnRemovedAsync(dbContext, logger, cancellationToken);
         await EnsureDoctorProfileColumnsRemovedAsync(dbContext, logger, cancellationToken);
         await EnsureStaticContentTableAsync(dbContext, logger, cancellationToken);
+        await EnsureStaticContentSeedsAsync(dbContext, logger, cancellationToken);
     }
 
     private static async Task EnsureSpecializationColumnsAsync(
@@ -101,16 +102,74 @@ public static class DatabaseInitializer
             );
 
             CREATE UNIQUE INDEX IF NOT EXISTS ""IX_StaticContents_Code"" ON ""StaticContents"" (""Code"");
-
-            INSERT INTO ""StaticContents"" (""Id"", ""Code"", ""Title"", ""Value"", ""UpdatedAt"")
-            VALUES
-                (gen_random_uuid(), 'eula', 'EULA', 'TODO: eula', now()),
-                (gen_random_uuid(), 'help', 'Help', 'TODO: help', now())
-            ON CONFLICT (""Code"") DO NOTHING;
         ";
 
         await dbContext.Database.ExecuteSqlRawAsync(sql, cancellationToken);
         logger?.LogInformation("Ensured StaticContents table exists.");
+    }
+
+    private static async Task EnsureStaticContentSeedsAsync(
+        MedAssistDbContext dbContext,
+        ILogger? logger,
+        CancellationToken cancellationToken)
+    {
+        var seedRoot = Path.Combine(AppContext.BaseDirectory, "Seeds", "StaticContent");
+        if (!Directory.Exists(seedRoot))
+        {
+            logger?.LogInformation("Static content seed folder not found at {Path}", seedRoot);
+            return;
+        }
+
+        var files = Directory.GetFiles(seedRoot, "*.html", SearchOption.TopDirectoryOnly)
+            .Concat(Directory.GetFiles(seedRoot, "*.htm", SearchOption.TopDirectoryOnly))
+            .ToList();
+        if (files.Count == 0)
+        {
+            logger?.LogInformation("No static content seed files found in {Path}", seedRoot);
+            return;
+        }
+
+        var existing = await dbContext.StaticContents
+            .AsNoTracking()
+            .Select(x => x.Code)
+            .ToListAsync(cancellationToken);
+        var existingCodes = new HashSet<string>(existing, StringComparer.OrdinalIgnoreCase);
+
+        var toAdd = new List<Domain.Entities.StaticContent>();
+        foreach (var file in files)
+        {
+            var code = Path.GetFileNameWithoutExtension(file);
+            if (string.IsNullOrWhiteSpace(code))
+            {
+                continue;
+            }
+
+            var normalized = code.Trim().ToLowerInvariant();
+            if (existingCodes.Contains(normalized))
+            {
+                continue;
+            }
+
+            var value = await File.ReadAllTextAsync(file, cancellationToken);
+            toAdd.Add(new Domain.Entities.StaticContent
+            {
+                Id = Guid.NewGuid(),
+                Code = normalized,
+                Title = null,
+                Value = value,
+                UpdatedAt = DateTimeOffset.UtcNow
+            });
+        }
+
+        if (toAdd.Count == 0)
+        {
+            logger?.LogInformation("Static content seeds are already present.");
+            return;
+        }
+
+        dbContext.StaticContents.AddRange(toAdd);
+        await dbContext.SaveChangesAsync(cancellationToken);
+        logger?.LogInformation("Seeded {Count} static content entries from files.", toAdd.Count);
     }
 
     private static async Task EnsurePersonalDataColumnsAsync(

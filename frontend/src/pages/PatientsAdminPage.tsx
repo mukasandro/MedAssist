@@ -10,10 +10,12 @@ import type {
   PatientSex,
   PatientStatus,
   CreatePatientRequest,
+  DoctorPublicDto,
 } from '../api/types'
 import { Input } from '../components/Input'
 import { Textarea } from '../components/Textarea'
 import { Modal } from '../components/Modal'
+import { Select } from '../components/Select'
 
 const statusTone = (status: PatientStatus) => (status === 1 ? 'success' : 'warning')
 
@@ -22,6 +24,10 @@ export default function PatientsAdminPage() {
   const { data: patients, isLoading, error } = useQuery({
     queryKey: ['admin-patients'],
     queryFn: ApiClient.getPatientsDirectory,
+  })
+  const { data: doctors } = useQuery({
+    queryKey: ['admin-doctors-for-patients'],
+    queryFn: ApiClient.getDoctors,
   })
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [editorOpen, setEditorOpen] = useState(false)
@@ -110,6 +116,25 @@ export default function PatientsAdminPage() {
   const handleCreateChange = (key: keyof (CreatePatientRequest & { telegramUserId: string }), value: any) => {
     setCreateForm((prev) => ({ ...prev, [key]: value }))
   }
+
+  const handleDoctorChange = (doctorId: string) => {
+    const selectedDoctor = doctors?.find((d) => d.id === doctorId)
+    setForm((prev) =>
+      prev
+        ? {
+            ...prev,
+            doctorId,
+            doctorNickname: selectedDoctor?.nickname ?? null,
+          }
+        : prev
+    )
+  }
+
+  const doctorOptions =
+    doctors?.map((d: DoctorPublicDto) => ({
+      value: d.id,
+      label: `${d.nickname?.trim() || 'Без никнейма'} (${d.telegramUserId ?? 'без tg id'})`,
+    })) ?? []
 
   return (
     <>
@@ -292,6 +317,7 @@ export default function PatientsAdminPage() {
               onClick={() => {
                 if (!form) return
                 const payload: UpdatePatientDirectoryRequest = {
+                  doctorId: form.doctorId,
                   sex: form.sex as PatientSex | null,
                   ageYears: form.ageYears ?? null,
                   nickname: form.nickname ?? null,
@@ -311,8 +337,12 @@ export default function PatientsAdminPage() {
       >
         {form ? (
           <div className="grid gap-3 md:grid-cols-2">
-            <Input label="ДокторId" value={form.doctorId} readOnly />
-            <Input label="Никнейм доктора" value={form.doctorNickname ?? ''} readOnly />
+            <Select
+              label="Врач"
+              value={form.doctorId}
+              options={doctorOptions}
+              onChange={(e) => handleDoctorChange(e.currentTarget.value)}
+            />
             <Input
               label="Пол (0=М,1=Ж)"
               type="number"

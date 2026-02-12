@@ -36,6 +36,27 @@ public class PatientDirectoryService : IPatientDirectoryService
             .FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
         if (patient == null) return null;
 
+        if (request.DoctorId.HasValue && request.DoctorId.Value != patient.DoctorId)
+        {
+            var newDoctor = await _db.Doctors
+                .Include(d => d.Registration)
+                .FirstOrDefaultAsync(d => d.Id == request.DoctorId.Value, cancellationToken);
+            if (newDoctor == null)
+            {
+                return null;
+            }
+
+            var oldDoctorId = patient.DoctorId;
+            patient.DoctorId = newDoctor.Id;
+            patient.Doctor = newDoctor;
+
+            var oldDoctor = await _db.Doctors.FirstOrDefaultAsync(d => d.Id == oldDoctorId, cancellationToken);
+            if (oldDoctor is not null && oldDoctor.LastSelectedPatientId == patient.Id)
+            {
+                oldDoctor.LastSelectedPatientId = null;
+            }
+        }
+
         patient.Sex = request.Sex;
         if (request.AgeYears.HasValue)
         {

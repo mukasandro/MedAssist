@@ -8,4 +8,5 @@ public record ProfileDto(
     IReadOnlyCollection<SpecializationDto> Specializations,
     long? TelegramUserId,
     string? Nickname,
-    Guid? LastSelectedPatientId);
+    Guid? LastSelectedPatientId,
+    string? LastSelectedPatientNickname);

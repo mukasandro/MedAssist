@@ -120,10 +120,14 @@ public class PatientsController : ControllerBase
         return NoContent();
     }
 
-    [SwaggerOperation(Summary = "Установить активного пациента", Description = "Устанавливает активного пациента у доктора.")]
+    [Obsolete("Use PUT /v1/me/active-patient.")]
+    [SwaggerOperation(
+        Summary = "Установить активного пациента (устаревший)",
+        Description = "Устаревший метод. Используйте PUT /v1/me/active-patient.")]
     [HttpPost("{id:guid}/setactive")]
     [ProducesResponseType(typeof(ProfileDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> SetActive(
         [FromHeader(Name = "X-Telegram-User-Id")] long telegramUserId,
         Guid id,

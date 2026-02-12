@@ -23,11 +23,16 @@ export interface ProfileDto {
   telegramUserId?: number | null
   nickname?: string | null
   lastSelectedPatientId?: string | null
+  lastSelectedPatientNickname?: string | null
   verified: boolean
 }
 
 export interface UpdateProfileRequest {
   nickname?: string | null
+}
+
+export interface SetActivePatientRequest {
+  patientId: string
 }
 
 export interface PatientDto {
@@ -93,6 +98,11 @@ export interface StaticContentDto {
   updatedAt: string
 }
 
+export interface StaticContentItemDto {
+  code: string
+  value: string
+}
+
 export interface CreateStaticContentRequest {
   code: string
   title?: string | null
@@ -123,6 +133,7 @@ export interface PatientDirectoryDto {
 }
 
 export interface UpdatePatientDirectoryRequest {
+  doctorId?: string | null
   sex?: PatientSex | null
   ageYears?: number | null
   nickname?: string | null

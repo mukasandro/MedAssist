@@ -15,17 +15,17 @@ public class StaticContentService : IStaticContentService
         _db = db;
     }
 
-    public async Task<IReadOnlyCollection<StaticContentDto>> GetListAsync(CancellationToken cancellationToken)
+    public async Task<IReadOnlyCollection<StaticContentAdminDto>> GetListAsync(CancellationToken cancellationToken)
     {
         var items = await _db.StaticContents
             .AsNoTracking()
             .OrderByDescending(x => x.UpdatedAt)
             .ToListAsync(cancellationToken);
 
-        return items.Select(ToDto).ToList().AsReadOnly();
+        return items.Select(ToAdminDto).ToList().AsReadOnly();
     }
 
-    public async Task<StaticContentDto> CreateAsync(CreateStaticContentRequest request, CancellationToken cancellationToken)
+    public async Task<StaticContentAdminDto> CreateAsync(CreateStaticContentRequest request, CancellationToken cancellationToken)
     {
         var code = NormalizeCode(request.Code);
         if (await _db.StaticContents.AnyAsync(x => x.Code == code, cancellationToken))
@@ -44,10 +44,10 @@ public class StaticContentService : IStaticContentService
 
         _db.StaticContents.Add(entity);
         await _db.SaveChangesAsync(cancellationToken);
-        return ToDto(entity);
+        return ToAdminDto(entity);
     }
 
-    public async Task<StaticContentDto?> UpdateAsync(Guid id, UpdateStaticContentRequest request, CancellationToken cancellationToken)
+    public async Task<StaticContentAdminDto?> UpdateAsync(Guid id, UpdateStaticContentRequest request, CancellationToken cancellationToken)
     {
         var entity = await _db.StaticContents.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
         if (entity is null)
@@ -68,7 +68,7 @@ public class StaticContentService : IStaticContentService
         entity.UpdatedAt = DateTimeOffset.UtcNow;
 
         await _db.SaveChangesAsync(cancellationToken);
-        return ToDto(entity);
+        return ToAdminDto(entity);
     }
 
     public async Task DeleteAsync(Guid id, CancellationToken cancellationToken)
@@ -93,7 +93,7 @@ public class StaticContentService : IStaticContentService
             .AsNoTracking()
             .FirstOrDefaultAsync(x => x.Code == normalizedCode, cancellationToken);
 
-        return entity is null ? null : ToDto(entity);
+        return entity is null ? null : ToBotDto(entity);
     }
 
     private static string NormalizeCode(string code) =>
@@ -102,6 +102,9 @@ public class StaticContentService : IStaticContentService
     private static string? NormalizeTitle(string? title) =>
         string.IsNullOrWhiteSpace(title) ? null : title.Trim();
 
-    private static StaticContentDto ToDto(Domain.Entities.StaticContent entity) =>
-        new( entity.Code, entity.Value);
+    private static StaticContentAdminDto ToAdminDto(Domain.Entities.StaticContent entity) =>
+        new(entity.Id, entity.Code, entity.Title, entity.Value, entity.UpdatedAt);
+
+    private static StaticContentDto ToBotDto(Domain.Entities.StaticContent entity) =>
+        new(entity.Code, entity.Value);
 }

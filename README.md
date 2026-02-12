@@ -19,8 +19,8 @@ MVP REST API для врачебных сценариев (регистраци�
 
 ## Ключевые эндпоинты (v1)
 - Регистрация: `POST /v1/registration` (никнейм, специализация), `DELETE /v1/registration` (удаляет врача и связанные данные через заголовок `X-Telegram-User-Id`).
-- Профиль: `GET /v1/me`, `PATCH /v1/me` (через заголовок `X-Telegram-User-Id`).
-- Пациенты: `GET /v1/patients`, `POST /v1/patients`, `GET /v1/patients/{id}`, `DELETE /v1/patients/{id}`, `POST /v1/patients/{id}/setactive` (через заголовок `X-Telegram-User-Id`).
+- Профиль: `GET /v1/me`, `PATCH /v1/me`, `PUT /v1/me/active-patient`, `DELETE /v1/me/active-patient` (через заголовок `X-Telegram-User-Id`).
+- Пациенты: `GET /v1/patients`, `POST /v1/patients`, `GET /v1/patients/{id}`, `PATCH /v1/patients/{id}`, `DELETE /v1/patients/{id}`, `POST /v1/patients/{id}/setactive` (устаревший, через заголовок `X-Telegram-User-Id`).
 - Статика: `GET /v1/static-content/{code}` (для бота), `GET|POST /v1/static-content`, `PUT|DELETE /v1/static-content/{id}` (админка).
 - Диалоги: `POST /v1/dialogs` (опционально `patientId`), `GET /v1/dialogs`, `GET /v1/dialogs/{id}`, `POST /v1/dialogs/{id}/close`.
 - Сообщения: `GET /v1/dialogs/{dialogId}/messages`, `POST /v1/dialogs/{dialogId}/messages`.

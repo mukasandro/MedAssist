@@ -3,6 +3,7 @@ using MedAssist.Domain.Enums;
 namespace MedAssist.Application.Requests;
 
 public record UpdatePatientDirectoryRequest(
+    Guid? DoctorId,
     PatientSex? Sex,
     int? AgeYears,
     string? Nickname,

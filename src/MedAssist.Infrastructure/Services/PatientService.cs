@@ -195,7 +195,8 @@ public class PatientService : IPatientService
             ToSpecializations(codes, titles),
             doctor.TelegramUserId,
             doctor.Registration?.Nickname,
-            doctor.LastSelectedPatientId);
+            doctor.LastSelectedPatientId,
+            patient.Nickname);
     }
 
     private async Task<Domain.Entities.Doctor?> GetDoctorAsync(long telegramUserId, CancellationToken cancellationToken)

@@ -74,4 +74,42 @@ public class MeController : ControllerBase
         var profile = await _profileService.UpdateSpecializationAsync(telegramUserId, request, cancellationToken);
         return profile is null ? NotFound() : Ok(profile);
     }
+
+    [SwaggerOperation(Summary = "Установить активного пациента", Description = "Устанавливает активного пациента текущего врача.")]
+    [HttpPut("active-patient")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [SwaggerRequestExample(typeof(SetActivePatientRequest), typeof(SetActivePatientRequestExample))]
+    public async Task<IActionResult> SetActivePatient(
+        [FromHeader(Name = "X-Telegram-User-Id")] long telegramUserId,
+        [FromBody] SetActivePatientRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (telegramUserId <= 0)
+        {
+            return BadRequest(new { error = "X-Telegram-User-Id header is required." });
+        }
+
+        var updated = await _profileService.SetActivePatientAsync(telegramUserId, request.PatientId, cancellationToken);
+        return updated ? NoContent() : NotFound();
+    }
+
+    [SwaggerOperation(Summary = "Очистить активного пациента", Description = "Сбрасывает активного пациента у текущего врача.")]
+    [HttpDelete("active-patient")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ClearActivePatient(
+        [FromHeader(Name = "X-Telegram-User-Id")] long telegramUserId,
+        CancellationToken cancellationToken)
+    {
+        if (telegramUserId <= 0)
+        {
+            return BadRequest(new { error = "X-Telegram-User-Id header is required." });
+        }
+
+        var updated = await _profileService.ClearActivePatientAsync(telegramUserId, cancellationToken);
+        return updated ? NoContent() : NotFound();
+    }
 }
