@@ -7,6 +7,7 @@ COPY src/MedAssist.Api/MedAssist.Api.csproj src/MedAssist.Api/
 COPY src/MedAssist.Application/MedAssist.Application.csproj src/MedAssist.Application/
 COPY src/MedAssist.Domain/MedAssist.Domain.csproj src/MedAssist.Domain/
 COPY src/MedAssist.Infrastructure/MedAssist.Infrastructure.csproj src/MedAssist.Infrastructure/
+COPY src/MedAssist.LlmGateway.Api/MedAssist.LlmGateway.Api.csproj src/MedAssist.LlmGateway.Api/
 RUN dotnet restore
 
 COPY . .
