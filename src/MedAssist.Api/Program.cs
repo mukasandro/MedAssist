@@ -1,15 +1,19 @@
 using MedAssist.Api.Middleware;
+using MedAssist.Api.Auth;
 using MedAssist.Api.Swagger;
 using MedAssist.Application;
 using MedAssist.Infrastructure;
 using MedAssist.Infrastructure.Data;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Formatters;
 using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.OpenApi.Models;
+using Microsoft.IdentityModel.Tokens;
 using Serilog;
 using Swashbuckle.AspNetCore.Filters;
 using FluentValidation.AspNetCore;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -31,6 +35,57 @@ builder.Services.AddControllers(options =>
 builder.Services.AddFluentValidationAutoValidation();
 builder.Services.AddFluentValidationClientsideAdapters();
 builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddMemoryCache();
+builder.Services
+    .AddOptions<AuthOptions>()
+    .Bind(builder.Configuration.GetSection(AuthOptions.SectionName))
+    .ValidateDataAnnotations();
+
+var authOptions = builder.Configuration.GetSection(AuthOptions.SectionName).Get<AuthOptions>() ?? new AuthOptions();
+var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(authOptions.Jwt.SigningKey));
+
+builder.Services
+    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidIssuer = authOptions.Jwt.Issuer,
+            ValidateAudience = true,
+            ValidAudience = authOptions.Jwt.Audience,
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = signingKey,
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.FromSeconds(30)
+        };
+    });
+
+builder.Services.AddAuthorization(options =>
+{
+    options.FallbackPolicy = new Microsoft.AspNetCore.Authorization.AuthorizationPolicyBuilder()
+        .RequireAuthenticatedUser()
+        .Build();
+
+    options.AddPolicy("MiniAppOnly", policy =>
+        policy.RequireClaim(AuthClaimTypes.ActorType, AuthActorTypes.MiniApp));
+
+    options.AddPolicy("BotOnly", policy =>
+        policy.RequireClaim(AuthClaimTypes.ActorType, AuthActorTypes.BotService));
+
+    options.AddPolicy("MiniAppOrBot", policy =>
+        policy.RequireAssertion(context =>
+        {
+            var actorType = context.User.FindFirst(AuthClaimTypes.ActorType)?.Value;
+            return string.Equals(actorType, AuthActorTypes.MiniApp, StringComparison.Ordinal)
+                   || string.Equals(actorType, AuthActorTypes.BotService, StringComparison.Ordinal);
+        }));
+});
+
+builder.Services.AddScoped<ITelegramInitDataValidator, TelegramInitDataValidator>();
+builder.Services.AddScoped<IApiKeyGrantValidator, ApiKeyGrantValidator>();
+builder.Services.AddScoped<ITokenService, TokenService>();
+
 builder.Services.AddSwaggerGen(options =>
 {
     options.EnableAnnotations();
@@ -63,6 +118,29 @@ builder.Services.AddSwaggerGen(options =>
         return groups.Contains(docName);
     });
     options.ExampleFilters();
+    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Name = "Authorization",
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT",
+        In = ParameterLocation.Header,
+        Description = "JWT access token: Bearer {token}"
+    });
+    options.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            Array.Empty<string>()
+        }
+    });
 });
 
 builder.Services.AddApplication();
@@ -102,6 +180,7 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseCors(app.Environment.IsDevelopment() ? "DevCors" : "DefaultCors");
+app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 

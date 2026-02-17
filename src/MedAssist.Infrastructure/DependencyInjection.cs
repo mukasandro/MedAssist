@@ -23,6 +23,9 @@ public static class DependencyInjection
         services.AddScoped<IDoctorService, DoctorService>();
         services.AddScoped<IPatientDirectoryService, PatientDirectoryService>();
         services.AddScoped<IStaticContentService, StaticContentService>();
+        services.AddScoped<ISystemSettingsService, SystemSettingsService>();
+        services.AddScoped<IBotChatService, BotChatService>();
+        services.AddScoped<IBillingService, BillingService>();
 
         return services;
     }

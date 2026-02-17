@@ -1,4 +1,4 @@
-import axios from 'axios'
+import axios, { AxiosHeaders } from 'axios'
 import {
   RegistrationDto,
   UpsertRegistrationRequest,
@@ -11,14 +11,23 @@ import {
   SpecializationDto,
   DoctorPublicDto,
   UpdateDoctorRequest,
+  TopUpDoctorTokensRequest,
+  DoctorTokenBalanceDto,
+  BillingTokenLedgerDto,
+  BotConversationHistoryDto,
+  BotChatTurnHistoryDto,
   StaticContentDto,
   StaticContentItemDto,
   CreateStaticContentRequest,
   UpdateStaticContentRequest,
+  SystemSettingsDto,
+  UpdateSystemSettingsRequest,
   PatientDirectoryDto,
   UpdatePatientDirectoryRequest,
   LlmGenerateRequest,
   LlmGenerateResponse,
+  IssueTokenRequest,
+  IssueTokenResponse,
 } from './types'
 
 const resolveBaseUrl = () => {
@@ -35,6 +44,67 @@ const resolveBaseUrl = () => {
 const api = axios.create({
   baseURL: resolveBaseUrl(),
 })
+
+const ADMIN_ACCESS_TOKEN_KEY = 'medassist.admin.access_token'
+
+const readInitialAccessToken = () => {
+  if (typeof window === 'undefined') return null
+  return sessionStorage.getItem(ADMIN_ACCESS_TOKEN_KEY)
+}
+
+let adminAccessToken: string | null = readInitialAccessToken()
+let unauthorizedListener: (() => void) | null = null
+
+const setAdminAccessToken = (token: string | null) => {
+  adminAccessToken = token
+  if (typeof window === 'undefined') return
+  if (token) {
+    sessionStorage.setItem(ADMIN_ACCESS_TOKEN_KEY, token)
+  } else {
+    sessionStorage.removeItem(ADMIN_ACCESS_TOKEN_KEY)
+  }
+}
+
+export const AdminSession = {
+  getAccessToken: () => adminAccessToken,
+  setAccessToken: (token: string) => setAdminAccessToken(token),
+  clearAccessToken: () => setAdminAccessToken(null),
+  subscribeUnauthorized: (listener: () => void) => {
+    unauthorizedListener = listener
+    return () => {
+      if (unauthorizedListener === listener) {
+        unauthorizedListener = null
+      }
+    }
+  },
+}
+
+api.interceptors.request.use((config) => {
+  if (!adminAccessToken) {
+    return config
+  }
+
+  const headers = AxiosHeaders.from(config.headers)
+  headers.set('Authorization', `Bearer ${adminAccessToken}`)
+  config.headers = headers
+  return config
+})
+
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const status = error?.response?.status
+    const url: string = error?.config?.url ?? ''
+    const isAuthTokenCall = url.includes('/v1/auth/token')
+
+    if (status === 401 && !isAuthTokenCall) {
+      setAdminAccessToken(null)
+      unauthorizedListener?.()
+    }
+
+    return Promise.reject(error)
+  }
+)
 
 const resolveLlmGatewayBaseUrl = () => {
   const envUrl = import.meta.env.VITE_LLM_GATEWAY_URL
@@ -55,6 +125,22 @@ export const ApiClient = {
   // Registration
   upsertRegistration: (payload: UpsertRegistrationRequest) =>
     api.post<RegistrationDto>('/v1/registration', payload).then((r) => r.data),
+
+  // Auth
+  issueToken: (payload: IssueTokenRequest, apiKey?: string | null) =>
+    api
+      .post<IssueTokenResponse>('/v1/auth/token', payload, {
+        headers: apiKey ? { Authorization: `ApiKey ${apiKey}` } : undefined,
+      })
+      .then((r) => r.data),
+  issueAdminToken: (apiKey: string) =>
+    api
+      .post<IssueTokenResponse>(
+        '/v1/auth/token',
+        { type: 'api_key', payload: {} } satisfies IssueTokenRequest,
+        { headers: { Authorization: `ApiKey ${apiKey}` } }
+      )
+      .then((r) => r.data),
 
   // Profile
   getProfile: (telegramUserId: string) =>
@@ -107,11 +193,42 @@ export const ApiClient = {
   getStaticContentValue: (code: string) =>
     api.get<StaticContentItemDto>(`/v1/static-content/${code}`).then((r) => r.data),
 
+  // System settings
+  getSystemSettings: () => api.get<SystemSettingsDto>('/v1/settings').then((r) => r.data),
+  updateSystemSettings: (payload: UpdateSystemSettingsRequest) =>
+    api.put<SystemSettingsDto>('/v1/settings', payload).then((r) => r.data),
+
   // Directory
   getDoctors: () => api.get<DoctorPublicDto[]>('/v1/doctors').then((r) => r.data),
   updateDoctor: (id: string, payload: UpdateDoctorRequest) =>
     api.put<DoctorPublicDto>(`/v1/doctors/${id}`, payload).then((r) => r.data),
   deleteDoctor: (id: string) => api.delete(`/v1/doctors/${id}`),
+  topUpDoctorTokens: (payload: TopUpDoctorTokensRequest) =>
+    api.post<DoctorTokenBalanceDto>('/v1/billing/topup', payload).then((r) => r.data),
+  getBillingHistory: (telegramUserId?: number | null, take = 100) =>
+    api
+      .get<BillingTokenLedgerDto[]>('/v1/billing/history', {
+        params: {
+          telegramUserId: telegramUserId ?? undefined,
+          take,
+        },
+      })
+      .then((r) => r.data),
+  getBotChatConversations: (telegramUserId?: number | null, take = 100) =>
+    api
+      .get<BotConversationHistoryDto[]>('/v1/admin/chat-history/conversations', {
+        params: {
+          telegramUserId: telegramUserId ?? undefined,
+          take,
+        },
+      })
+      .then((r) => r.data),
+  getBotChatTurns: (conversationId: string, take = 200) =>
+    api
+      .get<BotChatTurnHistoryDto[]>(`/v1/admin/chat-history/conversations/${conversationId}/turns`, {
+        params: { take },
+      })
+      .then((r) => r.data),
 
   // Patient directory
   getPatientsDirectory: () => api.get<PatientDirectoryDto[]>('/v1/patient-directory').then((r) => r.data),

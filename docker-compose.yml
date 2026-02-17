@@ -8,6 +8,9 @@ services:
       DOTNET_ENVIRONMENT: Development
       ConnectionStrings__Default: Host=postgres;Port=5432;Database=medassist;Username=medassist;Password=medassist
       Cors__Origins: http://localhost:4173,http://127.0.0.1:4173
+      Auth__Jwt__SigningKey: ${AUTH_JWT_SIGNING_KEY:-dev-only-change-this-signing-key-32+}
+      Auth__Telegram__BotToken: ${AUTH_TELEGRAM_BOT_TOKEN:-}
+      Auth__Service__ApiKey: ${AUTH_SERVICE_API_KEY:-}
     ports:
       - "5555:8080"
     depends_on:

@@ -186,6 +186,7 @@ public class ProfileService : IProfileService
             doctor.Id,
             ToSpecializations(codes, titles),
             doctor.TelegramUserId,
+            doctor.TokenBalance,
             doctor.Registration.Nickname,
             doctor.LastSelectedPatientId,
             lastSelectedPatientNickname);

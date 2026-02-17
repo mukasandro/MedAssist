@@ -13,6 +13,7 @@ type DoctorForm = {
   id: string
   specializationCode: string
   telegramUserId?: number | null
+  tokenBalance: number
   nickname?: string | null
   verified: boolean
 }
@@ -24,6 +25,7 @@ export default function DoctorsAdminPage() {
   const [editorOpen, setEditorOpen] = useState(false)
   const [form, setForm] = useState<DoctorForm | null>(null)
   const [saveMessage, setSaveMessage] = useState<string | null>(null)
+  const [topUpTokens, setTopUpTokens] = useState<string>('10')
   const testMutation = useMutation({
     mutationFn: ApiClient.createDoctorTest,
     onSuccess: () => {
@@ -53,12 +55,24 @@ export default function DoctorsAdminPage() {
     },
   })
 
+  const topUpMutation = useMutation({
+    mutationFn: ApiClient.topUpDoctorTokens,
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['admin-doctors'] })
+      setForm((prev) => (prev ? { ...prev, tokenBalance: data.tokenBalance } : prev))
+      setSaveMessage(`Баланс пополнен. Текущий остаток: ${data.tokenBalance}`)
+      setTimeout(() => setSaveMessage(null), 1800)
+    },
+  })
+
   const openNew = () => {
     setSelectedIds([])
+    setTopUpTokens('10')
     setForm({
       id: 'new',
       specializationCode: '',
       telegramUserId: null,
+      tokenBalance: 0,
       nickname: '',
       verified: false,
     })
@@ -68,11 +82,13 @@ export default function DoctorsAdminPage() {
   const openDoctor = (id: string) => {
     const doc = doctors?.find((d) => d.id === id)
     if (!doc) return
+    setTopUpTokens('10')
     setSelectedIds((prev) => (prev.includes(id) ? prev : [...prev, id]))
     setForm({
       id: doc.id,
       specializationCode: doc.specializations?.[0]?.code ?? '',
       telegramUserId: doc.telegramUserId ?? null,
+      tokenBalance: doc.tokenBalance ?? 0,
       nickname: doc.nickname ?? '',
       verified: doc.verified,
     })
@@ -128,6 +144,7 @@ export default function DoctorsAdminPage() {
                   <th className="px-3 py-2 w-10"></th>
                   <th className="px-3 py-2">ID</th>
                   <th className="px-3 py-2">Telegram ID</th>
+                  <th className="px-3 py-2">Баланс</th>
                   <th className="px-3 py-2">Никнейм</th>
                   <th className="px-3 py-2">Специализация</th>
                   <th className="px-3 py-2">Верификация</th>
@@ -151,6 +168,7 @@ export default function DoctorsAdminPage() {
                     </td>
                     <td className="px-3 py-2 font-medium text-textPrimary">{d.id}</td>
                     <td className="px-3 py-2 text-textSecondary">{d.telegramUserId ?? '—'}</td>
+                    <td className="px-3 py-2 text-textSecondary">{d.tokenBalance ?? 0}</td>
                     <td className="px-3 py-2 text-textSecondary">{d.nickname ?? '—'}</td>
                     <td className="px-3 py-2 text-textSecondary">{d.specializations?.[0]?.title ?? '—'}</td>
                     <td className="px-3 py-2">
@@ -212,9 +230,37 @@ export default function DoctorsAdminPage() {
               value={form.telegramUserId ?? ''}
               onChange={(e) => handleChange('telegramUserId', e.currentTarget.value === '' ? null : Number(e.currentTarget.value))}
             />
+            <Input label="Баланс токенов" value={form.tokenBalance} readOnly />
             <Input label="Никнейм" value={form.nickname ?? ''} onChange={(e) => handleChange('nickname', e.currentTarget.value)} />
             <div className="flex items-center gap-3">
               <Toggle label="Верифицирован" checked={form.verified} onChange={(e) => handleChange('verified', e.currentTarget.checked)} />
+            </div>
+            <Input
+              label="Пополнить на (токенов)"
+              type="number"
+              min={1}
+              value={topUpTokens}
+              onChange={(e) => setTopUpTokens(e.currentTarget.value)}
+            />
+            <div className="flex items-end">
+              <Button
+                variant="secondary"
+                disabled={
+                  !form.telegramUserId ||
+                  topUpMutation.isPending ||
+                  !Number.isFinite(Number(topUpTokens)) ||
+                  Number(topUpTokens) <= 0
+                }
+                onClick={() => {
+                  if (!form.telegramUserId) return
+                  topUpMutation.mutate({
+                    telegramUserId: form.telegramUserId,
+                    tokens: Number(topUpTokens),
+                  })
+                }}
+              >
+                Пополнить баланс
+              </Button>
             </div>
             {saveMessage && <div className="text-sm text-green-600">{saveMessage}</div>}
           </div>

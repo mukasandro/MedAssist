@@ -50,6 +50,7 @@ public static class DatabaseInitializer
         await EnsurePersonalDataColumnsAsync(dbContext, logger, cancellationToken);
         await EnsureSpecializationColumnsAsync(dbContext, logger, cancellationToken);
         await EnsureTelegramUserIdColumnAsync(dbContext, logger, cancellationToken);
+        await EnsureDoctorTokenBalanceColumnAsync(dbContext, logger, cancellationToken);
         await EnsureTelegramUsernameColumnRemovedAsync(dbContext, logger, cancellationToken);
         await EnsureDoctorPatientForeignKeyAsync(dbContext, logger, cancellationToken);
         await EnsureDoctorLastSelectedPatientForeignKeyAsync(dbContext, logger, cancellationToken);
@@ -57,7 +58,12 @@ public static class DatabaseInitializer
         await EnsureRegistrationConfirmedColumnRemovedAsync(dbContext, logger, cancellationToken);
         await EnsureDoctorProfileColumnsRemovedAsync(dbContext, logger, cancellationToken);
         await EnsureStaticContentTableAsync(dbContext, logger, cancellationToken);
+        await EnsureStaticContentValueColumnTypeAsync(dbContext, logger, cancellationToken);
         await EnsureStaticContentSeedsAsync(dbContext, logger, cancellationToken);
+        await EnsureSystemSettingsTableAsync(dbContext, logger, cancellationToken);
+        await EnsureSystemSettingsSeedAsync(dbContext, logger, cancellationToken);
+        await EnsureBotChatTablesAsync(dbContext, logger, cancellationToken);
+        await EnsureBillingTokenLedgerTableAsync(dbContext, logger, cancellationToken);
     }
 
     private static async Task EnsureSpecializationColumnsAsync(
@@ -106,6 +112,31 @@ public static class DatabaseInitializer
 
         await dbContext.Database.ExecuteSqlRawAsync(sql, cancellationToken);
         logger?.LogInformation("Ensured StaticContents table exists.");
+    }
+
+    private static async Task EnsureStaticContentValueColumnTypeAsync(
+        MedAssistDbContext dbContext,
+        ILogger? logger,
+        CancellationToken cancellationToken)
+    {
+        const string sql = @"
+            DO $$
+            BEGIN
+                IF EXISTS (
+                    SELECT 1
+                    FROM information_schema.columns
+                    WHERE table_schema = 'public'
+                      AND table_name = 'StaticContents'
+                      AND column_name = 'Value'
+                ) THEN
+                    ALTER TABLE ""StaticContents""
+                    ALTER COLUMN ""Value"" TYPE text;
+                END IF;
+            END $$;
+        ";
+
+        await dbContext.Database.ExecuteSqlRawAsync(sql, cancellationToken);
+        logger?.LogInformation("Ensured StaticContents.Value column type is text.");
     }
 
     private static async Task EnsureStaticContentSeedsAsync(
@@ -227,6 +258,20 @@ public static class DatabaseInitializer
 
         await dbContext.Database.ExecuteSqlRawAsync(sql, cancellationToken);
         logger?.LogInformation("Ensured TelegramUserId column exists in Doctors table.");
+    }
+
+    private static async Task EnsureDoctorTokenBalanceColumnAsync(
+        MedAssistDbContext dbContext,
+        ILogger? logger,
+        CancellationToken cancellationToken)
+    {
+        const string sql = @"
+            ALTER TABLE IF EXISTS ""Doctors""
+            ADD COLUMN IF NOT EXISTS ""TokenBalance"" integer NOT NULL DEFAULT 0;
+        ";
+
+        await dbContext.Database.ExecuteSqlRawAsync(sql, cancellationToken);
+        logger?.LogInformation("Ensured TokenBalance column exists in Doctors table.");
     }
 
     private static async Task EnsureRegistrationNicknameColumnAsync(
@@ -355,5 +400,129 @@ public static class DatabaseInitializer
 
         await dbContext.Database.ExecuteSqlRawAsync(sql, cancellationToken);
         logger?.LogInformation("Removed extended doctor profile columns from Doctors table.");
+    }
+
+    private static async Task EnsureSystemSettingsTableAsync(
+        MedAssistDbContext dbContext,
+        ILogger? logger,
+        CancellationToken cancellationToken)
+    {
+        const string sql = @"
+            CREATE TABLE IF NOT EXISTS ""SystemSettings"" (
+                ""Id"" uuid NOT NULL,
+                ""Key"" text NOT NULL,
+                ""ValueJson"" text NOT NULL,
+                ""UpdatedAt"" timestamp with time zone NOT NULL,
+                CONSTRAINT ""PK_SystemSettings"" PRIMARY KEY (""Id"")
+            );
+
+            CREATE UNIQUE INDEX IF NOT EXISTS ""IX_SystemSettings_Key"" ON ""SystemSettings"" (""Key"");
+        ";
+
+        await dbContext.Database.ExecuteSqlRawAsync(sql, cancellationToken);
+        logger?.LogInformation("Ensured SystemSettings table exists.");
+    }
+
+    private static async Task EnsureSystemSettingsSeedAsync(
+        MedAssistDbContext dbContext,
+        ILogger? logger,
+        CancellationToken cancellationToken)
+    {
+        const string sql = @"
+            INSERT INTO ""SystemSettings"" (""Id"", ""Key"", ""ValueJson"", ""UpdatedAt"")
+            SELECT '00000000-0000-0000-0000-000000000001'::uuid, 'app.settings', '{{""llmGatewayUrl"":""""}}', now()
+            WHERE NOT EXISTS (
+                SELECT 1 FROM ""SystemSettings"" WHERE ""Key"" = 'app.settings'
+            );
+        ";
+
+        await dbContext.Database.ExecuteSqlRawAsync(sql, cancellationToken);
+        logger?.LogInformation("Ensured app.settings seed exists in SystemSettings.");
+    }
+
+    private static async Task EnsureBotChatTablesAsync(
+        MedAssistDbContext dbContext,
+        ILogger? logger,
+        CancellationToken cancellationToken)
+    {
+        const string sql = @"
+            CREATE TABLE IF NOT EXISTS ""BotConversations"" (
+                ""Id"" uuid NOT NULL,
+                ""TelegramUserId"" bigint NOT NULL,
+                ""CreatedAt"" timestamp with time zone NOT NULL,
+                ""UpdatedAt"" timestamp with time zone NOT NULL,
+                CONSTRAINT ""PK_BotConversations"" PRIMARY KEY (""Id"")
+            );
+
+            CREATE INDEX IF NOT EXISTS ""IX_BotConversations_TelegramUserId""
+            ON ""BotConversations"" (""TelegramUserId"");
+
+            CREATE TABLE IF NOT EXISTS ""BotChatTurns"" (
+                ""Id"" uuid NOT NULL,
+                ""ConversationId"" uuid NOT NULL,
+                ""RequestId"" uuid NOT NULL,
+                ""UserText"" text NOT NULL,
+                ""AssistantText"" text NOT NULL,
+                ""Provider"" text NULL,
+                ""Model"" text NULL,
+                ""PromptTokens"" integer NULL,
+                ""CompletionTokens"" integer NULL,
+                ""ProviderRequestId"" text NULL,
+                ""CreatedAt"" timestamp with time zone NOT NULL,
+                CONSTRAINT ""PK_BotChatTurns"" PRIMARY KEY (""Id""),
+                CONSTRAINT ""FK_BotChatTurns_BotConversations_ConversationId""
+                    FOREIGN KEY (""ConversationId"") REFERENCES ""BotConversations"" (""Id"")
+                    ON DELETE CASCADE
+            );
+
+            CREATE INDEX IF NOT EXISTS ""IX_BotChatTurns_ConversationId""
+            ON ""BotChatTurns"" (""ConversationId"");
+
+            CREATE UNIQUE INDEX IF NOT EXISTS ""IX_BotChatTurns_RequestId""
+            ON ""BotChatTurns"" (""RequestId"");
+        ";
+
+        await dbContext.Database.ExecuteSqlRawAsync(sql, cancellationToken);
+        logger?.LogInformation("Ensured BotConversations and BotChatTurns tables exist.");
+    }
+
+    private static async Task EnsureBillingTokenLedgerTableAsync(
+        MedAssistDbContext dbContext,
+        ILogger? logger,
+        CancellationToken cancellationToken)
+    {
+        const string sql = @"
+            CREATE TABLE IF NOT EXISTS ""BillingTokenLedgers"" (
+                ""Id"" uuid NOT NULL,
+                ""DoctorId"" uuid NOT NULL,
+                ""TelegramUserId"" bigint NOT NULL,
+                ""Delta"" integer NOT NULL,
+                ""BalanceAfter"" integer NOT NULL,
+                ""Reason"" text NOT NULL,
+                ""ConversationId"" uuid NULL,
+                ""ChatTurnId"" uuid NULL,
+                ""RequestId"" uuid NULL,
+                ""CreatedAt"" timestamp with time zone NOT NULL,
+                CONSTRAINT ""PK_BillingTokenLedgers"" PRIMARY KEY (""Id""),
+                CONSTRAINT ""FK_BillingTokenLedgers_Doctors_DoctorId""
+                    FOREIGN KEY (""DoctorId"") REFERENCES ""Doctors"" (""Id"")
+                    ON DELETE CASCADE
+            );
+
+            CREATE INDEX IF NOT EXISTS ""IX_BillingTokenLedgers_DoctorId""
+            ON ""BillingTokenLedgers"" (""DoctorId"");
+
+            CREATE INDEX IF NOT EXISTS ""IX_BillingTokenLedgers_TelegramUserId""
+            ON ""BillingTokenLedgers"" (""TelegramUserId"");
+
+            CREATE INDEX IF NOT EXISTS ""IX_BillingTokenLedgers_CreatedAt""
+            ON ""BillingTokenLedgers"" (""CreatedAt"");
+
+            CREATE UNIQUE INDEX IF NOT EXISTS ""IX_BillingTokenLedgers_RequestId""
+            ON ""BillingTokenLedgers"" (""RequestId"");
+        ";
+
+        await dbContext.Database.ExecuteSqlRawAsync(sql, cancellationToken);
+        logger?.LogInformation("Ensured BillingTokenLedgers table exists.");
     }
 }

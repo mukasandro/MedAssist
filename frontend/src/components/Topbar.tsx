@@ -2,9 +2,10 @@ import { BUILD_DATE, BUILD_VERSION } from '../version'
 
 interface Props {
   onToggleSidebar: () => void
+  onLogout?: () => void
 }
 
-export function Topbar({ onToggleSidebar }: Props) {
+export function Topbar({ onToggleSidebar, onLogout }: Props) {
   return (
     <header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b border-border/70 bg-white/90 px-4 backdrop-blur">
       <button
@@ -15,6 +16,14 @@ export function Topbar({ onToggleSidebar }: Props) {
         ☰
       </button>
       <div className="flex items-center gap-3">
+        {onLogout && (
+          <button
+            onClick={onLogout}
+            className="rounded-lg border border-border px-3 py-1 text-sm font-medium text-textSecondary transition hover:border-red-300 hover:text-red-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-400"
+          >
+            Выйти
+          </button>
+        )}
         <div className="rounded-lg bg-red-100 px-3 py-1 text-sm font-semibold uppercase text-red-700">
           build {BUILD_VERSION} · {BUILD_DATE}
         </div>

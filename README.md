@@ -18,9 +18,10 @@ MVP REST API для врачебных сценариев (регистраци�
 - `src/MedAssist.Infrastructure` — in-memory сервисы, модуль DI, заглушка текущего пользователя.
 
 ## Ключевые эндпоинты (v1)
-- Регистрация: `POST /v1/registration` (никнейм, специализация), `DELETE /v1/registration` (удаляет врача и связанные данные через заголовок `X-Telegram-User-Id`).
-- Профиль: `GET /v1/me`, `PATCH /v1/me`, `PUT /v1/me/active-patient`, `DELETE /v1/me/active-patient` (через заголовок `X-Telegram-User-Id`).
-- Пациенты: `GET /v1/patients`, `POST /v1/patients`, `GET /v1/patients/{id}`, `PATCH /v1/patients/{id}`, `DELETE /v1/patients/{id}`, `POST /v1/patients/{id}/setactive` (устаревший, через заголовок `X-Telegram-User-Id`).
+- Аутентификация: `POST /v1/auth/token` (`type=telegram_init_data` + `payload.initData` или `type=api_key` + пустой `payload`), для `api_key` ключ передаётся в `Authorization: ApiKey ...`, ответ — JWT Bearer.
+- Регистрация: `POST /v1/registration` (никнейм, специализация), `DELETE /v1/registration` (удаляет врача и связанные данные; нужен JWT, `X-Telegram-User-Id` можно передать для совместимости).
+- Профиль: `GET /v1/me`, `PATCH /v1/me`, `PUT /v1/me/active-patient`, `DELETE /v1/me/active-patient` (нужен JWT; `X-Telegram-User-Id` остается как fallback).
+- Пациенты: `GET /v1/patients`, `POST /v1/patients`, `GET /v1/patients/{id}`, `PATCH /v1/patients/{id}`, `DELETE /v1/patients/{id}`, `POST /v1/patients/{id}/setactive` (устаревший, нужен JWT).
 - Статика: `GET /v1/static-content/{code}` (для бота), `GET|POST /v1/static-content`, `PUT|DELETE /v1/static-content/{id}` (админка).
 - Диалоги: `POST /v1/dialogs` (опционально `patientId`), `GET /v1/dialogs`, `GET /v1/dialogs/{id}`, `POST /v1/dialogs/{id}/close`.
 - Сообщения: `GET /v1/dialogs/{dialogId}/messages`, `POST /v1/dialogs/{dialogId}/messages`.
@@ -29,6 +30,9 @@ MVP REST API для врачебных сценариев (регистраци�
 ## Локальный запуск
 ```bash
 export ConnectionStrings__Default="Host=localhost;Port=5432;Database=medassist;Username=medassist;Password=medassist"
+export Auth__Jwt__SigningKey="replace-with-strong-32+-char-key"
+export Auth__Telegram__BotToken="telegram_bot_token"
+export Auth__Service__ApiKey="replace-with-service-api-key"
 export LlmGateway__DeepSeek__ApiKey="your_deepseek_api_key"
 dotnet restore
 dotnet run --project src/MedAssist.Api
@@ -40,6 +44,8 @@ dotnet run --project src/MedAssist.Api
 cp .env.example .env
 # укажи реальный ключ:
 # DEEPSEEK_API_KEY=...
+# AUTH_SERVICE_API_KEY=...
+# AUTH_TELEGRAM_BOT_TOKEN=...
 docker compose build
 docker compose up
 # API: http://localhost:8080/swagger (выберите Admin или Bot в списке)
@@ -47,6 +53,6 @@ docker compose up
 ```
 
 ## Заметки и дальнейшие шаги
-- Аутентификация заглушена: `StubCurrentUserContext` фиксирует одного врача; позже заменить на реальную авторизацию.
+- Для bot API добавлен JWT-вход (`/v1/auth/token`), но часть legacy-логики с `X-Telegram-User-Id` оставлена для совместимости.
 - Персистентность: Postgres через EF Core (EnsureCreated). Подключение: `ConnectionStrings__Default`.
 - Идемпотентность, валидацию и rate limit можно включить через middleware/Polly, когда определитесь с требованиями.

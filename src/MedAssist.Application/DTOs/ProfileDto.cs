@@ -7,6 +7,7 @@ public record ProfileDto(
     Guid DoctorId,
     IReadOnlyCollection<SpecializationDto> Specializations,
     long? TelegramUserId,
+    int TokenBalance,
     string? Nickname,
     Guid? LastSelectedPatientId,
     string? LastSelectedPatientNickname);

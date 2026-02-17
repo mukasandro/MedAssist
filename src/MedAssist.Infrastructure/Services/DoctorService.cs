@@ -158,7 +158,13 @@ public class DoctorService : IDoctorService
     {
         var codes = d.SpecializationCodes ?? new List<string>();
         var titles = d.SpecializationTitles ?? new List<string>();
-        return new(d.Id, ToSpecializations(codes, titles), d.TelegramUserId, d.Registration?.Nickname, d.Verified);
+        return new(
+            d.Id,
+            ToSpecializations(codes, titles),
+            d.TelegramUserId,
+            d.TokenBalance,
+            d.Registration?.Nickname,
+            d.Verified);
     }
 
     private async Task<SpecializationDto?> GetSpecializationAsync(string code, CancellationToken cancellationToken)

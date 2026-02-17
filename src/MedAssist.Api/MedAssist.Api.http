@@ -1,6 +1,30 @@
-@MedAssist.Api_HostAddress = http://localhost:5080
+@MedAssist.Api_HostAddress = http://localhost:8080
+@ServiceApiKey = replace-with-service-api-key
 
-GET {{MedAssist.Api_HostAddress}}/weatherforecast/
+### JWT по api_key (бот-сервис)
+POST {{MedAssist.Api_HostAddress}}/v1/auth/token
+Content-Type: application/json
+Authorization: ApiKey {{ServiceApiKey}}
+
+{
+  "type": "api_key",
+  "payload": {}
+}
+
+### JWT по telegram initData (миниапп)
+POST {{MedAssist.Api_HostAddress}}/v1/auth/token
+Content-Type: application/json
+
+{
+  "type": "telegram_init_data",
+  "payload": {
+    "initData": "query_id=...&user=...&auth_date=...&hash=..."
+  }
+}
+
+### Пример запроса к bot API с JWT (без X-Telegram-User-Id)
+GET {{MedAssist.Api_HostAddress}}/v1/me
 Accept: application/json
+Authorization: Bearer <paste-access-token>
 
 ###

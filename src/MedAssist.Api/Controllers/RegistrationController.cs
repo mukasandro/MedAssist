@@ -1,8 +1,12 @@
 using MedAssist.Api.Swagger;
 using MedAssist.Api.Swagger.Examples;
+using MedAssist.Api.Auth;
+using MedAssist.Api.Extensions;
 using MedAssist.Application.DTOs;
 using MedAssist.Application.Requests;
 using MedAssist.Application.Services;
+using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
 using Swashbuckle.AspNetCore.Filters;
@@ -10,6 +14,7 @@ using Swashbuckle.AspNetCore.Filters;
 namespace MedAssist.Api.Controllers;
 
 [SwaggerGroup("bot")]
+[Authorize(Policy = "MiniAppOrBot")]
 [ApiController]
 [Route("v1/registration")]
 public class RegistrationController : ControllerBase
@@ -29,6 +34,14 @@ public class RegistrationController : ControllerBase
     [SwaggerRequestExample(typeof(UpsertRegistrationRequest), typeof(UpsertRegistrationRequestExample))]
     public async Task<IActionResult> Upsert([FromBody] UpsertRegistrationRequest request, CancellationToken cancellationToken)
     {
+        var claimValue = User.FindFirstValue(AuthClaimTypes.TelegramUserId);
+        if (long.TryParse(claimValue, out var claimTelegramUserId)
+            && claimTelegramUserId > 0
+            && claimTelegramUserId != request.TelegramUserId)
+        {
+            return Forbid();
+        }
+
         var result = await _registrationService.UpsertAsync(request, cancellationToken);
         return Ok(result);
     }
@@ -41,9 +54,9 @@ public class RegistrationController : ControllerBase
         [FromHeader(Name = "X-Telegram-User-Id")] long telegramUserId,
         CancellationToken cancellationToken)
     {
-        if (telegramUserId <= 0)
+        if (!this.TryResolveTelegramUserId(telegramUserId, out telegramUserId))
         {
-            return BadRequest(new { error = "X-Telegram-User-Id header is required." });
+            return BadRequest(new { error = "X-Telegram-User-Id header or JWT claim telegram_user_id is required." });
         }
 
         var result = await _registrationService.UnregisterAsync(telegramUserId, cancellationToken);

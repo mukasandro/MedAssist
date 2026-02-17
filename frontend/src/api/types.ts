@@ -21,10 +21,10 @@ export interface ProfileDto {
   doctorId: string
   specializations: SpecializationDto[]
   telegramUserId?: number | null
+  tokenBalance: number
   nickname?: string | null
   lastSelectedPatientId?: string | null
   lastSelectedPatientNickname?: string | null
-  verified: boolean
 }
 
 export interface UpdateProfileRequest {
@@ -79,6 +79,7 @@ export interface DoctorPublicDto {
   id: string
   specializations: SpecializationDto[]
   telegramUserId?: number | null
+  tokenBalance: number
   nickname?: string | null
   verified: boolean
 }
@@ -88,6 +89,48 @@ export interface UpdateDoctorRequest {
   telegramUserId?: number | null
   nickname?: string | null
   verified: boolean
+}
+
+export interface TopUpDoctorTokensRequest {
+  telegramUserId: number
+  tokens: number
+}
+
+export interface DoctorTokenBalanceDto {
+  doctorId: string
+  telegramUserId: number
+  tokenBalance: number
+}
+
+export interface BillingTokenLedgerDto {
+  id: string
+  doctorId: string
+  telegramUserId: number
+  delta: number
+  balanceAfter: number
+  reason: string
+  conversationId?: string | null
+  chatTurnId?: string | null
+  requestId?: string | null
+  createdAt: string
+}
+
+export interface BotConversationHistoryDto {
+  conversationId: string
+  telegramUserId: number
+  turnsCount: number
+  lastUserText?: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface BotChatTurnHistoryDto {
+  turnId: string
+  conversationId: string
+  requestId: string
+  userText: string
+  assistantText: string
+  createdAt: string
 }
 
 export interface StaticContentDto {
@@ -113,6 +156,15 @@ export interface UpdateStaticContentRequest {
   code: string
   title?: string | null
   value: string
+}
+
+export interface SystemSettingsDto {
+  llmGatewayUrl?: string | null
+  updatedAt: string
+}
+
+export interface UpdateSystemSettingsRequest {
+  llmGatewayUrl: string
 }
 
 export interface PatientDirectoryDto {
@@ -160,4 +212,20 @@ export interface LlmGenerateResponse {
   promptTokens?: number | null
   completionTokens?: number | null
   requestId?: string | null
+}
+
+export type AuthGrantType = 'api_key' | 'telegram_init_data'
+
+export interface IssueTokenRequest {
+  type: AuthGrantType
+  payload: {
+    initData?: string
+  }
+}
+
+export interface IssueTokenResponse {
+  accessToken: string
+  expiresIn: number
+  tokenType: string
+  actorType: string
 }

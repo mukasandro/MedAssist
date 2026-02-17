@@ -11,6 +11,7 @@ public class Doctor
     public List<string> SpecializationCodes { get; set; } = new();
     public List<string> SpecializationTitles { get; set; } = new();
     public long? TelegramUserId { get; set; }
+    public int TokenBalance { get; set; }
 
     // Статусы и служебное
     public Registration Registration { get; set; } = new();

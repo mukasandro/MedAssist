@@ -1,8 +1,10 @@
 using MedAssist.Api.Swagger;
 using MedAssist.Api.Swagger.Examples;
+using MedAssist.Api.Extensions;
 using MedAssist.Application.DTOs;
 using MedAssist.Application.Requests;
 using MedAssist.Application.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
 using Swashbuckle.AspNetCore.Filters;
@@ -10,6 +12,7 @@ using Swashbuckle.AspNetCore.Filters;
 namespace MedAssist.Api.Controllers;
 
 [SwaggerGroup("bot")]
+[Authorize(Policy = "MiniAppOrBot")]
 [ApiController]
 [Route("v1/patients")]
 public class PatientsController : ControllerBase
@@ -29,9 +32,9 @@ public class PatientsController : ControllerBase
         [FromHeader(Name = "X-Telegram-User-Id")] long telegramUserId,
         CancellationToken cancellationToken)
     {
-        if (telegramUserId <= 0)
+        if (!this.TryResolveTelegramUserId(telegramUserId, out telegramUserId))
         {
-            return BadRequest(new { error = "X-Telegram-User-Id header is required." });
+            return BadRequest(new { error = "X-Telegram-User-Id header or JWT claim telegram_user_id is required." });
         }
 
         var patients = await _patientService.GetListAsync(telegramUserId, cancellationToken);
@@ -48,9 +51,9 @@ public class PatientsController : ControllerBase
         Guid id,
         CancellationToken cancellationToken)
     {
-        if (telegramUserId <= 0)
+        if (!this.TryResolveTelegramUserId(telegramUserId, out telegramUserId))
         {
-            return BadRequest(new { error = "X-Telegram-User-Id header is required." });
+            return BadRequest(new { error = "X-Telegram-User-Id header or JWT claim telegram_user_id is required." });
         }
 
         var patient = await _patientService.GetAsync(telegramUserId, id, cancellationToken);
@@ -67,9 +70,9 @@ public class PatientsController : ControllerBase
         [FromBody] CreatePatientRequest request,
         CancellationToken cancellationToken)
     {
-        if (telegramUserId <= 0)
+        if (!this.TryResolveTelegramUserId(telegramUserId, out telegramUserId))
         {
-            return BadRequest(new { error = "X-Telegram-User-Id header is required." });
+            return BadRequest(new { error = "X-Telegram-User-Id header or JWT claim telegram_user_id is required." });
         }
 
         var patient = await _patientService.CreateAsync(telegramUserId, request, cancellationToken);
@@ -93,9 +96,9 @@ public class PatientsController : ControllerBase
         [FromBody] UpdatePatientRequest request,
         CancellationToken cancellationToken)
     {
-        if (telegramUserId <= 0)
+        if (!this.TryResolveTelegramUserId(telegramUserId, out telegramUserId))
         {
-            return BadRequest(new { error = "X-Telegram-User-Id header is required." });
+            return BadRequest(new { error = "X-Telegram-User-Id header or JWT claim telegram_user_id is required." });
         }
 
         var patient = await _patientService.UpdateAsync(telegramUserId, id, request, cancellationToken);
@@ -111,9 +114,9 @@ public class PatientsController : ControllerBase
         Guid id,
         CancellationToken cancellationToken)
     {
-        if (telegramUserId <= 0)
+        if (!this.TryResolveTelegramUserId(telegramUserId, out telegramUserId))
         {
-            return BadRequest(new { error = "X-Telegram-User-Id header is required." });
+            return BadRequest(new { error = "X-Telegram-User-Id header or JWT claim telegram_user_id is required." });
         }
 
         await _patientService.DeleteAsync(telegramUserId, id, cancellationToken);
@@ -133,9 +136,9 @@ public class PatientsController : ControllerBase
         Guid id,
         CancellationToken cancellationToken)
     {
-        if (telegramUserId <= 0)
+        if (!this.TryResolveTelegramUserId(telegramUserId, out telegramUserId))
         {
-            return BadRequest(new { error = "X-Telegram-User-Id header is required." });
+            return BadRequest(new { error = "X-Telegram-User-Id header or JWT claim telegram_user_id is required." });
         }
 
         var profile = await _patientService.SelectAsync(telegramUserId, id, cancellationToken);
