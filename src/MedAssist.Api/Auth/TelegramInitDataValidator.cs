@@ -2,7 +2,6 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.WebUtilities;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -11,16 +10,13 @@ namespace MedAssist.Api.Auth;
 public sealed class TelegramInitDataValidator : ITelegramInitDataValidator
 {
     private readonly IOptions<AuthOptions> _options;
-    private readonly IMemoryCache _cache;
     private readonly ILogger<TelegramInitDataValidator> _logger;
 
     public TelegramInitDataValidator(
         IOptions<AuthOptions> options,
-        IMemoryCache cache,
         ILogger<TelegramInitDataValidator> logger)
     {
         _options = options;
-        _cache = cache;
         _logger = logger;
     }
 
@@ -100,16 +96,6 @@ public sealed class TelegramInitDataValidator : ITelegramInitDataValidator
                 parsed.ContainsKey("signature"));
             return false;
         }
-
-        var replayKey = $"tg:init:{receivedHash}";
-        if (_cache.TryGetValue(replayKey, out _))
-        {
-            error = "initData replay detected.";
-            _logger.LogWarning("Telegram initData validation failed: replay detected for hash={Hash}.", receivedHash);
-            return false;
-        }
-
-        _cache.Set(replayKey, true, TimeSpan.FromSeconds(settings.ReplayProtectionTtlSeconds));
 
         if (!parsed.TryGetValue("user", out var userValues))
         {
