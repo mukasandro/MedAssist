@@ -14,4 +14,9 @@ public interface IBotChatService
         Guid conversationId,
         int take,
         CancellationToken cancellationToken);
+    Task<IReadOnlyCollection<BotChatTurnHistoryDto>> GetTurnsAsync(
+        long telegramUserId,
+        Guid conversationId,
+        int take,
+        CancellationToken cancellationToken);
 }

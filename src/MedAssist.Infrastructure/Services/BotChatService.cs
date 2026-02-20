@@ -239,6 +239,23 @@ public class BotChatService : IBotChatService
         return turns.AsReadOnly();
     }
 
+    public async Task<IReadOnlyCollection<BotChatTurnHistoryDto>> GetTurnsAsync(
+        long telegramUserId,
+        Guid conversationId,
+        int take,
+        CancellationToken cancellationToken)
+    {
+        var exists = await _db.BotConversations
+            .AsNoTracking()
+            .AnyAsync(x => x.Id == conversationId && x.TelegramUserId == telegramUserId, cancellationToken);
+        if (!exists)
+        {
+            throw new KeyNotFoundException("Conversation not found.");
+        }
+
+        return await GetTurnsAsync(conversationId, take, cancellationToken);
+    }
+
     private async Task<(BotConversation Conversation, bool IsNew)> ResolveConversationAsync(
         AskBotQuestionRequest request,
         DateTimeOffset now,

@@ -229,6 +229,20 @@ export const ApiClient = {
         },
       })
       .then((r) => r.data),
+  getMyChatConversations: (telegramUserId: string, take = 100) =>
+    api
+      .get<BotConversationHistoryDto[]>('/v1/me/chat/conversations', {
+        headers: { 'X-Telegram-User-Id': telegramUserId },
+        params: { take },
+      })
+      .then((r) => r.data),
+  getMyChatTurns: (telegramUserId: string, conversationId: string, take = 200) =>
+    api
+      .get<BotChatTurnHistoryDto[]>(`/v1/me/chat/conversations/${conversationId}/turns`, {
+        headers: { 'X-Telegram-User-Id': telegramUserId },
+        params: { take },
+      })
+      .then((r) => r.data),
   getBotChatConversations: (telegramUserId?: number | null, take = 100) =>
     api
       .get<BotConversationHistoryDto[]>('/v1/admin/chat-history/conversations', {
