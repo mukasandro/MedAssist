@@ -11,7 +11,7 @@ using Swashbuckle.AspNetCore.Annotations;
 namespace MedAssist.Api.Controllers;
 
 [SwaggerGroup("bot")]
-[Authorize(Policy = "BotOnly")]
+[Authorize(Policy = "MiniAppOrBot")]
 [ApiController]
 [Route("v1/bot/chat")]
 public class BotChatController : ControllerBase
