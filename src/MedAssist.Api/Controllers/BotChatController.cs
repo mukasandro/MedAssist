@@ -1,4 +1,6 @@
 using MedAssist.Api.Swagger;
+using MedAssist.Api.Contracts.BotChat;
+using MedAssist.Api.Extensions;
 using MedAssist.Application.DTOs;
 using MedAssist.Application.Requests;
 using MedAssist.Application.Services;
@@ -29,9 +31,23 @@ public class BotChatController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
-    public async Task<IActionResult> Ask([FromBody] AskBotQuestionRequest request, CancellationToken cancellationToken)
+    public async Task<IActionResult> Ask(
+        [FromHeader(Name = "X-Telegram-User-Id")] long telegramUserId,
+        [FromBody] AskBotQuestionHttpRequest request,
+        CancellationToken cancellationToken)
     {
-        var answer = await _botChatService.AskAsync(request, cancellationToken);
+        if (!this.TryResolveTelegramUserId(telegramUserId, out telegramUserId))
+        {
+            return BadRequest(new { error = "X-Telegram-User-Id header or JWT claim telegram_user_id is required." });
+        }
+
+        var serviceRequest = new AskBotQuestionRequest(
+            TelegramUserId: telegramUserId,
+            Text: request.Text,
+            ConversationId: request.ConversationId,
+            RequestId: request.RequestId);
+
+        var answer = await _botChatService.AskAsync(serviceRequest, cancellationToken);
         return Ok(answer);
     }
 }
