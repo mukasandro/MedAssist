@@ -205,6 +205,21 @@ export const ApiClient = {
   deleteDoctor: (id: string) => api.delete(`/v1/doctors/${id}`),
   topUpDoctorTokens: (payload: TopUpDoctorTokensRequest) =>
     api.post<DoctorTokenBalanceDto>('/v1/billing/topup', payload).then((r) => r.data),
+  topUpMyTokens: (telegramUserId: string, tokens: number) =>
+    api
+      .post<DoctorTokenBalanceDto>(
+        '/v1/me/billing/topup',
+        { tokens },
+        { headers: { 'X-Telegram-User-Id': telegramUserId } }
+      )
+      .then((r) => r.data),
+  getMyBillingHistory: (telegramUserId: string, take = 100) =>
+    api
+      .get<BillingTokenLedgerDto[]>('/v1/me/billing/history', {
+        headers: { 'X-Telegram-User-Id': telegramUserId },
+        params: { take },
+      })
+      .then((r) => r.data),
   getBillingHistory: (telegramUserId?: number | null, take = 100) =>
     api
       .get<BillingTokenLedgerDto[]>('/v1/billing/history', {
