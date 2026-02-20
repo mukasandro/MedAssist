@@ -68,7 +68,7 @@ public class BotChatService : IBotChatService
         }
         if (doctor.TokenBalance <= 0)
         {
-            throw new ConflictException("Insufficient token balance.");
+            throw new InsufficientFundsException("Insufficient token balance.");
         }
 
         Patient? activePatient = null;
@@ -113,7 +113,7 @@ public class BotChatService : IBotChatService
             if (charged == 0)
             {
                 await tx.RollbackAsync(cancellationToken);
-                throw new ConflictException("Insufficient token balance.");
+                throw new InsufficientFundsException("Insufficient token balance.");
             }
             var balanceAfter = await _db.Doctors
                 .Where(x => x.Id == doctor.Id)

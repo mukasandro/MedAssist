@@ -25,7 +25,7 @@ export default function DoctorsAdminPage() {
   const [editorOpen, setEditorOpen] = useState(false)
   const [form, setForm] = useState<DoctorForm | null>(null)
   const [saveMessage, setSaveMessage] = useState<string | null>(null)
-  const [topUpTokens, setTopUpTokens] = useState<string>('10')
+  const [topUpTokens, setTopUpTokens] = useState<string>('1000')
   const testMutation = useMutation({
     mutationFn: ApiClient.createDoctorTest,
     onSuccess: () => {
@@ -67,7 +67,7 @@ export default function DoctorsAdminPage() {
 
   const openNew = () => {
     setSelectedIds([])
-    setTopUpTokens('10')
+    setTopUpTokens('1000')
     setForm({
       id: 'new',
       specializationCode: '',
@@ -82,7 +82,7 @@ export default function DoctorsAdminPage() {
   const openDoctor = (id: string) => {
     const doc = doctors?.find((d) => d.id === id)
     if (!doc) return
-    setTopUpTokens('10')
+    setTopUpTokens('1000')
     setSelectedIds((prev) => (prev.includes(id) ? prev : [...prev, id]))
     setForm({
       id: doc.id,

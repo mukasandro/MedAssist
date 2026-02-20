@@ -44,6 +44,7 @@ public sealed class ExceptionHandlingMiddleware
         {
             ArgumentException => (StatusCodes.Status400BadRequest, "Invalid request."),
             InvalidOperationException => (StatusCodes.Status400BadRequest, "Invalid operation."),
+            InsufficientFundsException => (StatusCodes.Status402PaymentRequired, "Payment required."),
             ConflictException => (StatusCodes.Status409Conflict, "Conflict."),
             KeyNotFoundException => (StatusCodes.Status404NotFound, "Resource not found."),
             _ => (StatusCodes.Status500InternalServerError, "Unexpected server error.")
