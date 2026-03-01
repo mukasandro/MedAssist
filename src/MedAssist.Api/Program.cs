@@ -16,6 +16,7 @@ using FluentValidation.AspNetCore;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
+ApplyLegacyEnvOverrides(builder.Configuration);
 
 Log.Logger = new LoggerConfiguration()
     .ReadFrom.Configuration(builder.Configuration)
@@ -187,3 +188,27 @@ app.MapControllers();
 await DatabaseInitializer.EnsureDatabaseAsync(app.Services, CancellationToken.None);
 
 app.Run();
+
+static void ApplyLegacyEnvOverrides(ConfigurationManager configuration)
+{
+    var overrides = new Dictionary<string, string?>(StringComparer.Ordinal);
+
+    AddIfPresent("AUTH_JWT_SIGNING_KEY", "Auth:Jwt:SigningKey");
+    AddIfPresent("AUTH_TELEGRAM_BOT_TOKEN", "Auth:Telegram:BotToken");
+    AddIfPresent("AUTH_SERVICE_API_KEY", "Auth:Service:ApiKey");
+    AddIfPresent("AUTH_SERVICE_PREVIOUS_API_KEY", "Auth:Service:PreviousApiKey");
+
+    if (overrides.Count > 0)
+    {
+        configuration.AddInMemoryCollection(overrides);
+    }
+
+    void AddIfPresent(string envName, string configPath)
+    {
+        var value = Environment.GetEnvironmentVariable(envName);
+        if (!string.IsNullOrWhiteSpace(value))
+        {
+            overrides[configPath] = value.Trim();
+        }
+    }
+}

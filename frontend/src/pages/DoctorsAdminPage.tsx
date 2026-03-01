@@ -15,6 +15,7 @@ type DoctorForm = {
   telegramUserId?: number | null
   tokenBalance: number
   nickname?: string | null
+  lastSelectedPatientId: string
   verified: boolean
 }
 
@@ -25,6 +26,7 @@ export default function DoctorsAdminPage() {
   const [editorOpen, setEditorOpen] = useState(false)
   const [form, setForm] = useState<DoctorForm | null>(null)
   const [saveMessage, setSaveMessage] = useState<string | null>(null)
+  const [saveError, setSaveError] = useState<string | null>(null)
   const [topUpTokens, setTopUpTokens] = useState<string>('1000')
   const testMutation = useMutation({
     mutationFn: ApiClient.createDoctorTest,
@@ -49,9 +51,14 @@ export default function DoctorsAdminPage() {
     mutationFn: (payload: { id: string; body: UpdateDoctorRequest }) =>
       ApiClient.updateDoctor(payload.id, payload.body),
     onSuccess: () => {
+      setSaveError(null)
       queryClient.invalidateQueries({ queryKey: ['admin-doctors'] })
       setSaveMessage('Сохранено')
       setTimeout(() => setSaveMessage(null), 1500)
+    },
+    onError: (err: any) => {
+      const detail = err?.response?.data?.detail
+      setSaveError(typeof detail === 'string' && detail.length > 0 ? detail : 'Не удалось сохранить врача.')
     },
   })
 
@@ -68,12 +75,14 @@ export default function DoctorsAdminPage() {
   const openNew = () => {
     setSelectedIds([])
     setTopUpTokens('1000')
+    setSaveError(null)
     setForm({
       id: 'new',
       specializationCode: '',
       telegramUserId: null,
       tokenBalance: 0,
       nickname: '',
+      lastSelectedPatientId: '',
       verified: false,
     })
     setEditorOpen(true)
@@ -83,6 +92,7 @@ export default function DoctorsAdminPage() {
     const doc = doctors?.find((d) => d.id === id)
     if (!doc) return
     setTopUpTokens('1000')
+    setSaveError(null)
     setSelectedIds((prev) => (prev.includes(id) ? prev : [...prev, id]))
     setForm({
       id: doc.id,
@@ -90,6 +100,7 @@ export default function DoctorsAdminPage() {
       telegramUserId: doc.telegramUserId ?? null,
       tokenBalance: doc.tokenBalance ?? 0,
       nickname: doc.nickname ?? '',
+      lastSelectedPatientId: doc.lastSelectedPatientId ?? '',
       verified: doc.verified,
     })
     setEditorOpen(true)
@@ -146,6 +157,7 @@ export default function DoctorsAdminPage() {
                   <th className="px-3 py-2">Telegram ID</th>
                   <th className="px-3 py-2">Баланс</th>
                   <th className="px-3 py-2">Никнейм</th>
+                  <th className="px-3 py-2">Активный пациент</th>
                   <th className="px-3 py-2">Специализация</th>
                   <th className="px-3 py-2">Верификация</th>
                 </tr>
@@ -170,6 +182,7 @@ export default function DoctorsAdminPage() {
                     <td className="px-3 py-2 text-textSecondary">{d.telegramUserId ?? '—'}</td>
                     <td className="px-3 py-2 text-textSecondary">{d.tokenBalance ?? 0}</td>
                     <td className="px-3 py-2 text-textSecondary">{d.nickname ?? '—'}</td>
+                    <td className="px-3 py-2 text-textSecondary">{d.lastSelectedPatientId ?? '—'}</td>
                     <td className="px-3 py-2 text-textSecondary">{d.specializations?.[0]?.title ?? '—'}</td>
                     <td className="px-3 py-2">
                       <Badge
@@ -203,10 +216,12 @@ export default function DoctorsAdminPage() {
               onClick={() => {
                 if (!form || form.id === 'new') return
                 const code = form.specializationCode.trim()
+                const lastSelectedPatientId = form.lastSelectedPatientId.trim()
                 const payload: UpdateDoctorRequest = {
                   specializationCodes: code ? [code] : [],
                   telegramUserId: form.telegramUserId ?? null,
                   nickname: form.nickname ?? null,
+                  lastSelectedPatientId,
                   verified: form.verified,
                 }
                 updateMutation.mutate({ id: form.id, body: payload })
@@ -232,6 +247,12 @@ export default function DoctorsAdminPage() {
             />
             <Input label="Баланс токенов" value={form.tokenBalance} readOnly />
             <Input label="Никнейм" value={form.nickname ?? ''} onChange={(e) => handleChange('nickname', e.currentTarget.value)} />
+            <Input
+              label="Активный пациент (ID)"
+              placeholder="GUID пациента или пусто для очистки"
+              value={form.lastSelectedPatientId}
+              onChange={(e) => handleChange('lastSelectedPatientId', e.currentTarget.value)}
+            />
             <div className="flex items-center gap-3">
               <Toggle label="Верифицирован" checked={form.verified} onChange={(e) => handleChange('verified', e.currentTarget.checked)} />
             </div>
@@ -263,6 +284,7 @@ export default function DoctorsAdminPage() {
               </Button>
             </div>
             {saveMessage && <div className="text-sm text-green-600">{saveMessage}</div>}
+            {saveError && <div className="text-sm text-red-600">{saveError}</div>}
           </div>
         ) : (
           <div className="text-sm text-textSecondary">Нет данных для отображения.</div>

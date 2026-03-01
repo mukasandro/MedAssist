@@ -1,8 +1,9 @@
+using MedAssist.LlmGateway.Api.Contracts;
+
 namespace MedAssist.LlmGateway.Api.Providers;
 
 public record ProviderGenerateRequest(
     string Model,
-    string? SystemPrompt,
-    string Prompt,
+    IReadOnlyList<ChatMessageRequest> Messages,
     double? Temperature,
     int? MaxTokens);

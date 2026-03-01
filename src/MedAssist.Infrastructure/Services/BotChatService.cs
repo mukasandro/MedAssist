@@ -1,5 +1,5 @@
 using System.Net.Http.Json;
-using System.Text;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using MedAssist.Application.DTOs;
 using MedAssist.Application.Exceptions;
@@ -14,17 +14,13 @@ namespace MedAssist.Infrastructure.Services;
 
 public class BotChatService : IBotChatService
 {
-    private const string SystemPrompt = """
-                                        Ты помощник для врача в Telegram.
-                                        Отвечай только на русском языке.
-                                        Не ставь окончательных диагнозов, отмечай ограничения дистанционного формата.
-                                        При признаках неотложных состояний явно советуй срочно обратиться за очной медицинской помощью.
-                                        Отвечай структурированно и кратко.
-                                        """;
-
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
     {
         PropertyNameCaseInsensitive = true
+    };
+    private static readonly JsonSerializerOptions LogJsonOptions = new(JsonSerializerDefaults.Web)
+    {
+        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
     };
 
     private readonly MedAssistDbContext _db;
@@ -71,26 +67,19 @@ public class BotChatService : IBotChatService
             throw new InsufficientFundsException("Insufficient token balance.");
         }
 
-        Patient? activePatient = null;
-        if (doctor.LastSelectedPatientId.HasValue)
-        {
-            activePatient = await _db.Patients
-                .AsNoTracking()
-                .FirstOrDefaultAsync(
-                    p => p.Id == doctor.LastSelectedPatientId.Value && p.DoctorId == doctor.Id,
-                    cancellationToken);
-        }
+        var historyDepth = await _systemSettingsService.GetEnrichChatHistoryDepthAsync(cancellationToken);
+        var normalizedHistoryDepth = Math.Clamp(historyDepth, 1, 50);
 
         var history = await _db.BotChatTurns
             .AsNoTracking()
             .Where(x => x.ConversationId == conversation.Id)
             .OrderByDescending(x => x.CreatedAt)
-            .Take(10)
+            .Take(normalizedHistoryDepth)
             .ToListAsync(cancellationToken);
         history.Reverse();
 
-        var prompt = BuildPrompt(doctor, activePatient, history, request.Text);
-        var llmResult = await GenerateAsync(prompt, cancellationToken);
+        var messages = BuildMessages(history, request.Text);
+        var llmResult = await GenerateAsync(doctor, messages, cancellationToken);
 
         await using var tx = await _db.Database.BeginTransactionAsync(cancellationToken);
         try
@@ -285,7 +274,10 @@ public class BotChatService : IBotChatService
         return (existing, false);
     }
 
-    private async Task<LlmGatewayGenerateResponse> GenerateAsync(string prompt, CancellationToken cancellationToken)
+    private async Task<LlmGatewayGenerateResponse> GenerateAsync(
+        Doctor doctor,
+        IReadOnlyList<LlmGatewayChatMessage> messages,
+        CancellationToken cancellationToken)
     {
         var baseUrl = await _systemSettingsService.GetLlmGatewayUrlAsync(cancellationToken);
         if (string.IsNullOrWhiteSpace(baseUrl))
@@ -296,12 +288,13 @@ public class BotChatService : IBotChatService
         var endpoint = $"{baseUrl.TrimEnd('/')}/v1/generate";
         var payload = new LlmGatewayGenerateRequest
         {
-            Prompt = prompt,
-            Model = null,
-            SystemPrompt = SystemPrompt,
-            Temperature = 0.2,
-            MaxTokens = 1200
+            DoctorId = doctor.Id,
+            PatientId = doctor.LastSelectedPatientId,
+            DoctorSpecializationCode = ResolvePrimarySpecializationCode(doctor),
+            Messages = messages
         };
+        var payloadJson = JsonSerializer.Serialize(payload, LogJsonOptions);
+        _logger.LogInformation("Outbound LLM payload to {Endpoint}: {PayloadJson}", endpoint, payloadJson);
 
         using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         timeoutCts.CancelAfter(TimeSpan.FromSeconds(90));
@@ -324,52 +317,46 @@ public class BotChatService : IBotChatService
         return result;
     }
 
-    private static string BuildPrompt(
-        Doctor doctor,
-        Patient? activePatient,
+    private static IReadOnlyList<LlmGatewayChatMessage> BuildMessages(
         IReadOnlyCollection<BotChatTurn> history,
         string userText)
     {
-        var sb = new StringBuilder();
-        sb.AppendLine("Контекст врача:");
-        sb.AppendLine($"- TelegramUserId: {doctor.TelegramUserId}");
-        sb.AppendLine($"- Никнейм: {doctor.Registration?.Nickname ?? "не указан"}");
-        sb.AppendLine($"- Специализация: {string.Join(", ", doctor.SpecializationTitles ?? new List<string>())}");
-        sb.AppendLine();
+        var messages = new List<LlmGatewayChatMessage>();
 
-        sb.AppendLine("Контекст пациента:");
-        if (activePatient is null)
+        foreach (var turn in history)
         {
-            sb.AppendLine("- Активный пациент не выбран.");
-        }
-        else
-        {
-            sb.AppendLine($"- PatientId: {activePatient.Id}");
-            sb.AppendLine($"- Никнейм: {activePatient.Nickname ?? "не указан"}");
-            sb.AppendLine($"- Пол: {activePatient.Sex?.ToString() ?? "не указан"}");
-            sb.AppendLine($"- Возраст: {(activePatient.AgeYears.HasValue ? activePatient.AgeYears.Value.ToString() : "не указан")}");
-            sb.AppendLine($"- Аллергии: {activePatient.Allergies ?? "не указаны"}");
-            sb.AppendLine($"- Хронические состояния: {activePatient.ChronicConditions ?? "не указаны"}");
-            sb.AppendLine($"- Теги: {activePatient.Tags ?? "нет"}");
-            sb.AppendLine($"- Заметки: {activePatient.Notes ?? "нет"}");
-        }
-
-        if (history.Count > 0)
-        {
-            sb.AppendLine();
-            sb.AppendLine("История диалога (последние ходы):");
-            foreach (var turn in history)
+            if (!string.IsNullOrWhiteSpace(turn.UserText))
             {
-                sb.AppendLine($"Пользователь: {turn.UserText}");
-                sb.AppendLine($"Ассистент: {turn.AssistantText}");
+                messages.Add(new LlmGatewayChatMessage
+                {
+                    Role = "user",
+                    Content = turn.UserText.Trim()
+                });
+            }
+
+            if (!string.IsNullOrWhiteSpace(turn.AssistantText))
+            {
+                messages.Add(new LlmGatewayChatMessage
+                {
+                    Role = "assistant",
+                    Content = turn.AssistantText.Trim()
+                });
             }
         }
 
-        sb.AppendLine();
-        sb.AppendLine("Текущий вопрос пользователя:");
-        sb.AppendLine(userText.Trim());
+        messages.Add(new LlmGatewayChatMessage
+        {
+            Role = "user",
+            Content = userText.Trim()
+        });
 
-        return sb.ToString();
+        return messages;
+    }
+
+    private static string? ResolvePrimarySpecializationCode(Doctor doctor)
+    {
+        var code = doctor.SpecializationCodes?.FirstOrDefault(static value => !string.IsNullOrWhiteSpace(value));
+        return string.IsNullOrWhiteSpace(code) ? null : code.Trim();
     }
 
     private static BotChatAnswerDto ToDto(BotChatTurn turn) =>
@@ -380,11 +367,16 @@ public class BotChatService : IBotChatService
 
     private sealed record LlmGatewayGenerateRequest
     {
-        public string Prompt { get; init; } = string.Empty;
-        public string? Model { get; init; }
-        public string? SystemPrompt { get; init; }
-        public double? Temperature { get; init; }
-        public int? MaxTokens { get; init; }
+        public Guid? DoctorId { get; init; }
+        public Guid? PatientId { get; init; }
+        public string? DoctorSpecializationCode { get; init; }
+        public IReadOnlyList<LlmGatewayChatMessage> Messages { get; init; } = Array.Empty<LlmGatewayChatMessage>();
+    }
+
+    private sealed record LlmGatewayChatMessage
+    {
+        public string Role { get; init; } = string.Empty;
+        public string Content { get; init; } = string.Empty;
     }
 
     private sealed record LlmGatewayGenerateResponse(

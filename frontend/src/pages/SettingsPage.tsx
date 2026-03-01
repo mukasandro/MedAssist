@@ -13,11 +13,13 @@ export default function SettingsPage() {
   })
 
   const [llmGatewayUrl, setLlmGatewayUrl] = useState('')
+  const [enrichChatHistoryDepth, setEnrichChatHistoryDepth] = useState('5')
   const [saveMessage, setSaveMessage] = useState<string | null>(null)
 
   useEffect(() => {
     if (!data) return
     setLlmGatewayUrl(data.llmGatewayUrl ?? '')
+    setEnrichChatHistoryDepth(String(data.enrichChatHistoryDepth ?? 5))
   }, [data])
 
   const updateMutation = useMutation({
@@ -36,11 +38,14 @@ export default function SettingsPage() {
         <Button
           variant="primary"
           disabled={isLoading || updateMutation.isPending}
-          onClick={() =>
+          onClick={() => {
+            const parsedDepth = Number.parseInt(enrichChatHistoryDepth, 10)
+            const normalizedDepth = Number.isNaN(parsedDepth) ? 5 : Math.min(50, Math.max(1, parsedDepth))
             updateMutation.mutate({
               llmGatewayUrl: llmGatewayUrl.trim(),
+              enrichChatHistoryDepth: normalizedDepth,
             })
-          }
+          }}
         >
           Сохранить
         </Button>
@@ -60,6 +65,14 @@ export default function SettingsPage() {
             value={llmGatewayUrl}
             placeholder="http://localhost:8090"
             onChange={(e) => setLlmGatewayUrl(e.currentTarget.value)}
+          />
+          <Input
+            label="Глубина истории для enrich"
+            type="number"
+            min={1}
+            max={50}
+            value={enrichChatHistoryDepth}
+            onChange={(e) => setEnrichChatHistoryDepth(e.currentTarget.value)}
           />
           <div className="flex items-end text-xs text-textSecondary">
             Последнее обновление:{' '}

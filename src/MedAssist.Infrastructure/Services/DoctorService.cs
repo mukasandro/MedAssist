@@ -60,6 +60,27 @@ public class DoctorService : IDoctorService
                 ? null
                 : request.Nickname.Trim();
         }
+        if (request.LastSelectedPatientId is not null)
+        {
+            var patientIdRaw = request.LastSelectedPatientId.Trim();
+            if (patientIdRaw.Length == 0)
+            {
+                doctor.LastSelectedPatientId = null;
+            }
+            else
+            {
+                var patientId = Guid.Parse(patientIdRaw);
+                var patientExists = await _db.Patients
+                    .AsNoTracking()
+                    .AnyAsync(p => p.Id == patientId, cancellationToken);
+                if (!patientExists)
+                {
+                    throw new InvalidOperationException("Patient with provided id was not found.");
+                }
+
+                doctor.LastSelectedPatientId = patientId;
+            }
+        }
         doctor.Verified = request.Verified;
         if (request.SpecializationCodes is not null)
         {
@@ -164,6 +185,7 @@ public class DoctorService : IDoctorService
             d.TelegramUserId,
             d.TokenBalance,
             d.Registration?.Nickname,
+            d.LastSelectedPatientId,
             d.Verified);
     }
 

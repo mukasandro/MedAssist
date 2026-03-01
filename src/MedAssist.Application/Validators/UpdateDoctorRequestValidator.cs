@@ -15,5 +15,8 @@ public class UpdateDoctorRequestValidator : AbstractValidator<UpdateDoctorReques
             .NotEmpty()
             .MaximumLength(100)
             .When(x => x.SpecializationCodes != null);
+        RuleFor(x => x.LastSelectedPatientId)
+            .Must(value => string.IsNullOrWhiteSpace(value) || Guid.TryParse(value, out _))
+            .WithMessage("lastSelectedPatientId must be a valid GUID.");
     }
 }

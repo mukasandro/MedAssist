@@ -81,6 +81,7 @@ export interface DoctorPublicDto {
   telegramUserId?: number | null
   tokenBalance: number
   nickname?: string | null
+  lastSelectedPatientId?: string | null
   verified: boolean
 }
 
@@ -89,6 +90,7 @@ export interface UpdateDoctorRequest {
   telegramUserId?: number | null
   nickname?: string | null
   verified: boolean
+  lastSelectedPatientId?: string | null
 }
 
 export interface TopUpDoctorTokensRequest {
@@ -160,11 +162,13 @@ export interface UpdateStaticContentRequest {
 
 export interface SystemSettingsDto {
   llmGatewayUrl?: string | null
+  enrichChatHistoryDepth: number
   updatedAt: string
 }
 
 export interface UpdateSystemSettingsRequest {
   llmGatewayUrl: string
+  enrichChatHistoryDepth: number
 }
 
 export interface PatientDirectoryDto {

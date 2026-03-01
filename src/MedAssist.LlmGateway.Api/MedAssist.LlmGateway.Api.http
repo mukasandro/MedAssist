@@ -7,9 +7,17 @@ POST {{host}}/v1/generate
 Content-Type: application/json
 
 {
-  "prompt": "Say hello",
   "model": "deepseek-chat",
-  "systemPrompt": "You are helpful.",
   "temperature": 0.3,
-  "maxTokens": 200
+  "maxTokens": 200,
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are helpful."
+    },
+    {
+      "role": "user",
+      "content": "Say hello"
+    }
+  ]
 }

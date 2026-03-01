@@ -44,13 +44,9 @@ public abstract class OpenAiCompatibleChatProvider : ILLMProvider
             throw new InvalidOperationException($"{Name} base url is not configured.");
         }
 
-        var messages = new List<object>();
-        if (!string.IsNullOrWhiteSpace(request.SystemPrompt))
-        {
-            messages.Add(new { role = "system", content = request.SystemPrompt });
-        }
-
-        messages.Add(new { role = "user", content = request.Prompt });
+        var messages = request.Messages
+            .Select(message => new { role = message.Role, content = message.Content })
+            .ToList<object>();
 
         var payload = new Dictionary<string, object?>
         {

@@ -6,4 +6,5 @@ public record UpdateDoctorRequest(
     IReadOnlyCollection<string>? SpecializationCodes,
     long? TelegramUserId,
     string? Nickname,
-    bool Verified);
+    bool Verified,
+    string? LastSelectedPatientId = null);

@@ -1,6 +1,7 @@
 using MedAssist.LlmGateway.Api.Options;
 using MedAssist.LlmGateway.Api.Providers;
 using MedAssist.LlmGateway.Api.Routing;
+using MedAssist.LlmGateway.Api.Swagger;
 using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -18,6 +19,7 @@ builder.Services.AddCors(options =>
 builder.Services.AddSwaggerGen(options =>
 {
     options.EnableAnnotations();
+    options.OperationFilter<GenerateRequestExampleOperationFilter>();
     options.SwaggerDoc("v1", new OpenApiInfo
     {
         Title = "MedAssist LLM Gateway API",

@@ -10,6 +10,7 @@ namespace MedAssist.Infrastructure.Services;
 public class SystemSettingsService : ISystemSettingsService
 {
     private const string AppSettingsKey = "app.settings";
+    private const int DefaultEnrichChatHistoryDepth = 5;
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
     private readonly MedAssistDbContext _db;
 
@@ -26,11 +27,14 @@ public class SystemSettingsService : ISystemSettingsService
 
         if (entity is null)
         {
-            return new SystemSettingsDto(null, DateTimeOffset.UtcNow);
+            return new SystemSettingsDto(null, DefaultEnrichChatHistoryDepth, DateTimeOffset.UtcNow);
         }
 
         var payload = Deserialize(entity.ValueJson);
-        return new SystemSettingsDto(payload.LlmGatewayUrl, entity.UpdatedAt);
+        return new SystemSettingsDto(
+            payload.LlmGatewayUrl,
+            NormalizeEnrichChatHistoryDepth(payload.EnrichChatHistoryDepth),
+            entity.UpdatedAt);
     }
 
     public async Task<SystemSettingsDto> UpdateAsync(UpdateSystemSettingsRequest request, CancellationToken cancellationToken)
@@ -39,25 +43,26 @@ public class SystemSettingsService : ISystemSettingsService
             .FirstOrDefaultAsync(x => x.Key == AppSettingsKey, cancellationToken);
 
         var normalizedUrl = NormalizeUrl(request.LlmGatewayUrl);
+        var normalizedDepth = NormalizeEnrichChatHistoryDepth(request.EnrichChatHistoryDepth);
         if (entity is null)
         {
             entity = new Domain.Entities.SystemSetting
             {
                 Id = Guid.NewGuid(),
                 Key = AppSettingsKey,
-                ValueJson = Serialize(new AppSettingsPayload(normalizedUrl)),
+                ValueJson = Serialize(new AppSettingsPayload(normalizedUrl, normalizedDepth)),
                 UpdatedAt = DateTimeOffset.UtcNow
             };
             _db.SystemSettings.Add(entity);
         }
         else
         {
-            entity.ValueJson = Serialize(new AppSettingsPayload(normalizedUrl));
+            entity.ValueJson = Serialize(new AppSettingsPayload(normalizedUrl, normalizedDepth));
             entity.UpdatedAt = DateTimeOffset.UtcNow;
         }
 
         await _db.SaveChangesAsync(cancellationToken);
-        return new SystemSettingsDto(normalizedUrl, entity.UpdatedAt);
+        return new SystemSettingsDto(normalizedUrl, normalizedDepth, entity.UpdatedAt);
     }
 
     public async Task<string?> GetLlmGatewayUrlAsync(CancellationToken cancellationToken)
@@ -66,23 +71,31 @@ public class SystemSettingsService : ISystemSettingsService
         return settings.LlmGatewayUrl;
     }
 
+    public async Task<int> GetEnrichChatHistoryDepthAsync(CancellationToken cancellationToken)
+    {
+        var settings = await GetAsync(cancellationToken);
+        return settings.EnrichChatHistoryDepth;
+    }
+
     private static AppSettingsPayload Deserialize(string json)
     {
         if (string.IsNullOrWhiteSpace(json))
         {
-            return new AppSettingsPayload(null);
+            return new AppSettingsPayload(null, DefaultEnrichChatHistoryDepth);
         }
 
         try
         {
             var payload = JsonSerializer.Deserialize<AppSettingsPayload>(json, JsonOptions);
             return payload is null
-                ? new AppSettingsPayload(null)
-                : payload with { LlmGatewayUrl = NormalizeUrl(payload.LlmGatewayUrl) };
+                ? new AppSettingsPayload(null, DefaultEnrichChatHistoryDepth)
+                : new AppSettingsPayload(
+                    NormalizeUrl(payload.LlmGatewayUrl),
+                    NormalizeEnrichChatHistoryDepth(payload.EnrichChatHistoryDepth));
         }
         catch (JsonException)
         {
-            return new AppSettingsPayload(null);
+            return new AppSettingsPayload(null, DefaultEnrichChatHistoryDepth);
         }
     }
 
@@ -99,5 +112,11 @@ public class SystemSettingsService : ISystemSettingsService
         return value.Trim();
     }
 
-    private sealed record AppSettingsPayload(string? LlmGatewayUrl);
+    private static int NormalizeEnrichChatHistoryDepth(int? value)
+    {
+        var raw = value ?? DefaultEnrichChatHistoryDepth;
+        return Math.Clamp(raw, 1, 50);
+    }
+
+    private sealed record AppSettingsPayload(string? LlmGatewayUrl, int? EnrichChatHistoryDepth);
 }

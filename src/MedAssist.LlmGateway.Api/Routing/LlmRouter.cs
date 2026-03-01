@@ -28,10 +28,42 @@ public class LlmRouter : ILLMRouter
             throw new InvalidOperationException("Default DeepSeek model is not configured.");
         }
 
+        if (request.Messages.Count == 0)
+        {
+            throw new ArgumentException("messages must contain at least one item.");
+        }
+
+        var normalizedMessages = new List<ChatMessageRequest>(request.Messages.Count);
+        for (var i = 0; i < request.Messages.Count; i++)
+        {
+            var message = request.Messages[i];
+            if (message is null)
+            {
+                throw new ArgumentException($"messages[{i}] is required.");
+            }
+
+            var role = message.Role?.Trim().ToLowerInvariant();
+            if (role is not ("system" or "user" or "assistant"))
+            {
+                throw new ArgumentException($"messages[{i}].role must be one of: system, user, assistant.");
+            }
+
+            var content = message.Content?.Trim();
+            if (string.IsNullOrWhiteSpace(content))
+            {
+                throw new ArgumentException($"messages[{i}].content must be provided.");
+            }
+
+            normalizedMessages.Add(new ChatMessageRequest
+            {
+                Role = role,
+                Content = content
+            });
+        }
+
         var providerRequest = new ProviderGenerateRequest(
             model,
-            request.SystemPrompt,
-            request.Prompt,
+            normalizedMessages,
             request.Temperature,
             request.MaxTokens);
 

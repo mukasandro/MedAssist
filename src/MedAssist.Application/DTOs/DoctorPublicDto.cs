@@ -8,4 +8,5 @@ public record DoctorPublicDto(
     long? TelegramUserId,
     int TokenBalance,
     string? Nickname,
+    Guid? LastSelectedPatientId,
     bool Verified);
