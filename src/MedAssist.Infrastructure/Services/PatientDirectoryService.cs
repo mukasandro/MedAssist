@@ -12,10 +12,14 @@ namespace MedAssist.Infrastructure.Services;
 public class PatientDirectoryService : IPatientDirectoryService
 {
     private readonly MedAssistDbContext _db;
+    private readonly EnrichPatientCardsSyncService _enrichPatientCardsSyncService;
 
-    public PatientDirectoryService(MedAssistDbContext db)
+    public PatientDirectoryService(
+        MedAssistDbContext db,
+        EnrichPatientCardsSyncService enrichPatientCardsSyncService)
     {
         _db = db;
+        _enrichPatientCardsSyncService = enrichPatientCardsSyncService;
     }
 
     public async Task<IReadOnlyCollection<PatientDirectoryDto>> GetAllAsync(CancellationToken cancellationToken)
@@ -71,6 +75,7 @@ public class PatientDirectoryService : IPatientDirectoryService
         patient.UpdatedAt = DateTimeOffset.UtcNow;
 
         await _db.SaveChangesAsync(cancellationToken);
+        await _enrichPatientCardsSyncService.TryUpsertAsync(patient, patient.Doctor, cancellationToken);
         return ToDto(patient);
     }
 
@@ -102,6 +107,7 @@ public class PatientDirectoryService : IPatientDirectoryService
             .Include(d => d.Registration)
             .FirstOrDefaultAsync(d => d.Id == patient.DoctorId, cancellationToken);
         patient.Doctor = doctor!;
+        await _enrichPatientCardsSyncService.TryUpsertAsync(patient, patient.Doctor, cancellationToken);
         return ToDto(patient);
     }
 
@@ -112,6 +118,7 @@ public class PatientDirectoryService : IPatientDirectoryService
         {
             _db.Patients.Remove(patient);
             await _db.SaveChangesAsync(cancellationToken);
+            await _enrichPatientCardsSyncService.TryDeleteAsync(patient.Id, cancellationToken);
         }
     }
 

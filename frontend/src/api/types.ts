@@ -162,12 +162,14 @@ export interface UpdateStaticContentRequest {
 
 export interface SystemSettingsDto {
   llmGatewayUrl?: string | null
+  enrichServiceUrl: string
   enrichChatHistoryDepth: number
   updatedAt: string
 }
 
 export interface UpdateSystemSettingsRequest {
   llmGatewayUrl: string
+  enrichServiceUrl: string
   enrichChatHistoryDepth: number
 }
 

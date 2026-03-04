@@ -6,6 +6,7 @@ import { Input } from '../components/Input'
 import { ApiClient } from '../api/client'
 
 export default function SettingsPage() {
+  const defaultEnrichServiceUrl = 'https://enrich.muk.i234.me'
   const queryClient = useQueryClient()
   const { data, isLoading, error } = useQuery({
     queryKey: ['system-settings'],
@@ -13,12 +14,14 @@ export default function SettingsPage() {
   })
 
   const [llmGatewayUrl, setLlmGatewayUrl] = useState('')
+  const [enrichServiceUrl, setEnrichServiceUrl] = useState(defaultEnrichServiceUrl)
   const [enrichChatHistoryDepth, setEnrichChatHistoryDepth] = useState('5')
   const [saveMessage, setSaveMessage] = useState<string | null>(null)
 
   useEffect(() => {
     if (!data) return
     setLlmGatewayUrl(data.llmGatewayUrl ?? '')
+    setEnrichServiceUrl(data.enrichServiceUrl ?? defaultEnrichServiceUrl)
     setEnrichChatHistoryDepth(String(data.enrichChatHistoryDepth ?? 5))
   }, [data])
 
@@ -43,6 +46,7 @@ export default function SettingsPage() {
             const normalizedDepth = Number.isNaN(parsedDepth) ? 5 : Math.min(50, Math.max(1, parsedDepth))
             updateMutation.mutate({
               llmGatewayUrl: llmGatewayUrl.trim(),
+              enrichServiceUrl: enrichServiceUrl.trim() || defaultEnrichServiceUrl,
               enrichChatHistoryDepth: normalizedDepth,
             })
           }}
@@ -65,6 +69,12 @@ export default function SettingsPage() {
             value={llmGatewayUrl}
             placeholder="http://localhost:8090"
             onChange={(e) => setLlmGatewayUrl(e.currentTarget.value)}
+          />
+          <Input
+            label="Адрес сервиса enrich"
+            value={enrichServiceUrl}
+            placeholder="https://enrich.muk.i234.me"
+            onChange={(e) => setEnrichServiceUrl(e.currentTarget.value)}
           />
           <Input
             label="Глубина истории для enrich"

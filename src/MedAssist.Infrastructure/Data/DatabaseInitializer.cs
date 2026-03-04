@@ -430,7 +430,7 @@ public static class DatabaseInitializer
     {
         const string sql = @"
             INSERT INTO ""SystemSettings"" (""Id"", ""Key"", ""ValueJson"", ""UpdatedAt"")
-            SELECT '00000000-0000-0000-0000-000000000001'::uuid, 'app.settings', '{{""llmGatewayUrl"":"""",""enrichChatHistoryDepth"":5}}', now()
+            SELECT '00000000-0000-0000-0000-000000000001'::uuid, 'app.settings', '{{""llmGatewayUrl"":"""",""enrichServiceUrl"":""https://enrich.muk.i234.me"",""enrichChatHistoryDepth"":5}}', now()
             WHERE NOT EXISTS (
                 SELECT 1 FROM ""SystemSettings"" WHERE ""Key"" = 'app.settings'
             );

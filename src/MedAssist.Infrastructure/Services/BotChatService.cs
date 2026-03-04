@@ -1,6 +1,7 @@
 using System.Net.Http.Json;
 using System.Text.Encodings.Web;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using MedAssist.Application.DTOs;
 using MedAssist.Application.Exceptions;
 using MedAssist.Application.Requests;
@@ -8,6 +9,7 @@ using MedAssist.Application.Services;
 using MedAssist.Domain.Entities;
 using MedAssist.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
 namespace MedAssist.Infrastructure.Services;
@@ -25,15 +27,18 @@ public class BotChatService : IBotChatService
 
     private readonly MedAssistDbContext _db;
     private readonly ISystemSettingsService _systemSettingsService;
+    private readonly IConfiguration _configuration;
     private readonly ILogger<BotChatService> _logger;
 
     public BotChatService(
         MedAssistDbContext db,
         ISystemSettingsService systemSettingsService,
+        IConfiguration configuration,
         ILogger<BotChatService> logger)
     {
         _db = db;
         _systemSettingsService = systemSettingsService;
+        _configuration = configuration;
         _logger = logger;
     }
 
@@ -279,42 +284,68 @@ public class BotChatService : IBotChatService
         IReadOnlyList<LlmGatewayChatMessage> messages,
         CancellationToken cancellationToken)
     {
-        var baseUrl = await _systemSettingsService.GetLlmGatewayUrlAsync(cancellationToken);
+        var baseUrl = await _systemSettingsService.GetEnrichServiceUrlAsync(cancellationToken);
         if (string.IsNullOrWhiteSpace(baseUrl))
         {
-            throw new InvalidOperationException("LLM Gateway URL is not configured in system settings.");
+            throw new InvalidOperationException("Enrich service URL is not configured in system settings.");
         }
 
-        var endpoint = $"{baseUrl.TrimEnd('/')}/v1/generate";
-        var payload = new LlmGatewayGenerateRequest
+        var apiKey = _configuration["Enrich:ApiKey"] ?? Environment.GetEnvironmentVariable("ENRICH_API_KEY");
+        if (string.IsNullOrWhiteSpace(apiKey))
         {
-            DoctorId = doctor.Id,
-            PatientId = doctor.LastSelectedPatientId,
+            throw new InvalidOperationException("Enrich API key is not configured.");
+        }
+
+        var endpoint = $"{baseUrl.TrimEnd('/')}/v1/enrich";
+        var payload = new EnrichGenerateRequest
+        {
+            PatientId = doctor.LastSelectedPatientId?.ToString(),
             DoctorSpecializationCode = ResolvePrimarySpecializationCode(doctor),
             Messages = messages
         };
         var payloadJson = JsonSerializer.Serialize(payload, LogJsonOptions);
-        _logger.LogInformation("Outbound LLM payload to {Endpoint}: {PayloadJson}", endpoint, payloadJson);
+        _logger.LogInformation("Outbound enrich payload to {Endpoint}: {PayloadJson}", endpoint, payloadJson);
 
         using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         timeoutCts.CancelAfter(TimeSpan.FromSeconds(90));
 
         using var client = new HttpClient();
-        using var response = await client.PostAsJsonAsync(endpoint, payload, timeoutCts.Token);
+        using var request = new HttpRequestMessage(HttpMethod.Post, endpoint)
+        {
+            Content = JsonContent.Create(payload)
+        };
+        request.Headers.Add("X-Api-Key", apiKey.Trim());
+
+        using var response = await client.SendAsync(request, timeoutCts.Token);
         var body = await response.Content.ReadAsStringAsync(timeoutCts.Token);
 
         if (!response.IsSuccessStatusCode)
         {
-            throw new InvalidOperationException($"LLM Gateway returned {(int)response.StatusCode}: {body}");
+            throw new InvalidOperationException($"Enrich service returned {(int)response.StatusCode}: {body}");
         }
 
-        var result = JsonSerializer.Deserialize<LlmGatewayGenerateResponse>(body, JsonOptions);
-        if (result is null || string.IsNullOrWhiteSpace(result.Content))
+        var result = JsonSerializer.Deserialize<EnrichGenerateResponse>(body, JsonOptions);
+        if (result is null)
         {
-            throw new InvalidOperationException("LLM Gateway returned empty response.");
+            throw new InvalidOperationException("Enrich service returned empty response.");
         }
 
-        return result;
+        var content = !string.IsNullOrWhiteSpace(result.LlmResponse)
+            ? result.LlmResponse
+            : result.EnrichedText;
+        if (string.IsNullOrWhiteSpace(content))
+        {
+            throw new InvalidOperationException("Enrich service returned empty response content.");
+        }
+
+        return new LlmGatewayGenerateResponse(
+            "enrich",
+            "enrich",
+            content.Trim(),
+            null,
+            null,
+            null,
+            null);
     }
 
     private static IReadOnlyList<LlmGatewayChatMessage> BuildMessages(
@@ -365,19 +396,31 @@ public class BotChatService : IBotChatService
             turn.RequestId,
             turn.AssistantText);
 
-    private sealed record LlmGatewayGenerateRequest
+    private sealed record EnrichGenerateRequest
     {
-        public Guid? DoctorId { get; init; }
-        public Guid? PatientId { get; init; }
+        [JsonPropertyName("PatientId")]
+        public string? PatientId { get; init; }
+
+        [JsonPropertyName("DoctorSpecializationCode")]
         public string? DoctorSpecializationCode { get; init; }
+
+        [JsonPropertyName("Messages")]
         public IReadOnlyList<LlmGatewayChatMessage> Messages { get; init; } = Array.Empty<LlmGatewayChatMessage>();
     }
 
     private sealed record LlmGatewayChatMessage
     {
+        [JsonPropertyName("Role")]
         public string Role { get; init; } = string.Empty;
+
+        [JsonPropertyName("Content")]
         public string Content { get; init; } = string.Empty;
     }
+
+    private sealed record EnrichGenerateResponse(
+        [property: JsonPropertyName("EnrichedText")] string? EnrichedText,
+        [property: JsonPropertyName("LlmResponse")] string? LlmResponse,
+        [property: JsonPropertyName("TimeStamp")] DateTimeOffset? TimeStamp);
 
     private sealed record LlmGatewayGenerateResponse(
         string Provider,

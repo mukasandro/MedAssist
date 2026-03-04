@@ -24,6 +24,7 @@ public static class DependencyInjection
         services.AddScoped<IPatientDirectoryService, PatientDirectoryService>();
         services.AddScoped<IStaticContentService, StaticContentService>();
         services.AddScoped<ISystemSettingsService, SystemSettingsService>();
+        services.AddScoped<EnrichPatientCardsSyncService>();
         services.AddScoped<IBotChatService, BotChatService>();
         services.AddScoped<IBillingService, BillingService>();
 

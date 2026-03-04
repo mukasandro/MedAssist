@@ -13,6 +13,12 @@ public class UpdateSystemSettingsRequestValidator : AbstractValidator<UpdateSyst
             .Must(BeAbsoluteHttpUrl)
             .WithMessage("llmGatewayUrl must be a valid absolute http/https URL.");
 
+        RuleFor(x => x.EnrichServiceUrl)
+            .NotEmpty()
+            .MaximumLength(2048)
+            .Must(BeAbsoluteHttpUrl)
+            .WithMessage("enrichServiceUrl must be a valid absolute http/https URL.");
+
         RuleFor(x => x.EnrichChatHistoryDepth)
             .InclusiveBetween(1, 50);
     }
