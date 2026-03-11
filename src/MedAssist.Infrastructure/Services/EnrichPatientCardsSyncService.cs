@@ -39,7 +39,7 @@ public sealed class EnrichPatientCardsSyncService
             {
                 PatientId = patient.Id,
                 SpecialtyCode = ResolveSpecialtyCode(doctor),
-                Summary = new PatientCardSummaryRequest
+                History = new PatientCardHistoryRequest
                 {
                     Sex = patient.Sex is null ? null : (int)patient.Sex.Value,
                     AgeYears = patient.AgeYears,
@@ -173,11 +173,11 @@ public sealed class EnrichPatientCardsSyncService
         [JsonPropertyName("SpecialtyCode")]
         public string? SpecialtyCode { get; init; }
 
-        [JsonPropertyName("Summary")]
-        public PatientCardSummaryRequest Summary { get; init; } = new();
+        [JsonPropertyName("History")]
+        public PatientCardHistoryRequest History { get; init; } = new();
     }
 
-    private sealed record PatientCardSummaryRequest
+    private sealed record PatientCardHistoryRequest
     {
         [JsonPropertyName("sex")]
         public int? Sex { get; init; }
