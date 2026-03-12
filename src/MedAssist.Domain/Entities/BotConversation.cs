@@ -7,5 +7,6 @@ public class BotConversation
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
 
+    public BotConversationSummary? Summary { get; set; }
     public List<BotChatTurn> Turns { get; set; } = new();
 }

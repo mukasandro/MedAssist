@@ -15,6 +15,7 @@ public class MedAssistDbContext : DbContext
     public DbSet<Consent> Consents => Set<Consent>();
     public DbSet<SystemSetting> SystemSettings => Set<SystemSetting>();
     public DbSet<BotConversation> BotConversations => Set<BotConversation>();
+    public DbSet<BotConversationSummary> BotConversationSummaries => Set<BotConversationSummary>();
     public DbSet<BotChatTurn> BotChatTurns => Set<BotChatTurn>();
     public DbSet<BillingTokenLedger> BillingTokenLedgers => Set<BillingTokenLedger>();
 
@@ -82,10 +83,22 @@ public class MedAssistDbContext : DbContext
             b.Property(x => x.CreatedAt).IsRequired();
             b.Property(x => x.UpdatedAt).IsRequired();
             b.HasIndex(x => x.TelegramUserId);
+            b.HasOne(x => x.Summary)
+                .WithOne(x => x.Conversation)
+                .HasForeignKey<BotConversationSummary>(x => x.ConversationId)
+                .OnDelete(DeleteBehavior.Cascade);
             b.HasMany(x => x.Turns)
                 .WithOne(x => x.Conversation)
                 .HasForeignKey(x => x.ConversationId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<BotConversationSummary>(b =>
+        {
+            b.HasKey(x => x.ConversationId);
+            b.Property(x => x.SpecialtyCode).HasMaxLength(64);
+            b.Property(x => x.SummaryText).HasColumnType("text");
+            b.Property(x => x.UpdatedAt).IsRequired();
         });
 
         modelBuilder.Entity<BotChatTurn>(b =>

@@ -457,6 +457,18 @@ public static class DatabaseInitializer
             CREATE INDEX IF NOT EXISTS ""IX_BotConversations_TelegramUserId""
             ON ""BotConversations"" (""TelegramUserId"");
 
+            CREATE TABLE IF NOT EXISTS ""BotConversationSummaries"" (
+                ""ConversationId"" uuid NOT NULL,
+                ""PatientId"" uuid NULL,
+                ""SpecialtyCode"" text NULL,
+                ""SummaryText"" text NULL,
+                ""UpdatedAt"" timestamp with time zone NOT NULL,
+                CONSTRAINT ""PK_BotConversationSummaries"" PRIMARY KEY (""ConversationId""),
+                CONSTRAINT ""FK_BotConversationSummaries_BotConversations_ConversationId""
+                    FOREIGN KEY (""ConversationId"") REFERENCES ""BotConversations"" (""Id"")
+                    ON DELETE CASCADE
+            );
+
             CREATE TABLE IF NOT EXISTS ""BotChatTurns"" (
                 ""Id"" uuid NOT NULL,
                 ""ConversationId"" uuid NOT NULL,
@@ -483,7 +495,7 @@ public static class DatabaseInitializer
         ";
 
         await dbContext.Database.ExecuteSqlRawAsync(sql, cancellationToken);
-        logger?.LogInformation("Ensured BotConversations and BotChatTurns tables exist.");
+        logger?.LogInformation("Ensured BotConversations, BotConversationSummaries and BotChatTurns tables exist.");
     }
 
     private static async Task EnsureBillingTokenLedgerTableAsync(

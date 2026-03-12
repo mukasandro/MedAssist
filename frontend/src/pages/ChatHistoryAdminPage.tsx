@@ -88,6 +88,11 @@ export default function ChatHistoryAdminPage() {
     [doctors]
   )
 
+  const selectedConversation = useMemo(
+    () => conversations?.find((conversation) => conversation.conversationId === selectedConversationId) ?? null,
+    [conversations, selectedConversationId]
+  )
+
   return (
     <div className="grid gap-4">
       <Card
@@ -148,6 +153,7 @@ export default function ChatHistoryAdminPage() {
                     <th className="px-3 py-2">Conversation</th>
                     <th className="px-3 py-2">Врач</th>
                     <th className="px-3 py-2">Сообщений</th>
+                    <th className="px-3 py-2">Summary</th>
                     <th className="px-3 py-2">Обновлен</th>
                   </tr>
                 </thead>
@@ -173,6 +179,18 @@ export default function ChatHistoryAdminPage() {
                         </div>
                       </td>
                       <td className="px-3 py-2 align-top text-textSecondary">{conversation.turnsCount}</td>
+                      <td className="px-3 py-2 align-top text-textSecondary">
+                        {conversation.summaryText?.trim() ? (
+                          <div className="max-w-xs">
+                            <div className="line-clamp-3 text-xs">{conversation.summaryText}</div>
+                            <div className="mt-1 text-[11px]">
+                              {conversation.summaryUpdatedAt ? formatDateTime(conversation.summaryUpdatedAt) : '—'}
+                            </div>
+                          </div>
+                        ) : (
+                          '—'
+                        )}
+                      </td>
                       <td className="px-3 py-2 align-top text-textSecondary">{formatDateTime(conversation.updatedAt)}</td>
                     </tr>
                   ))}
@@ -193,6 +211,24 @@ export default function ChatHistoryAdminPage() {
             <div className="grid gap-3">
               <div className="rounded-lg border border-border bg-surface px-4 py-3 text-xs text-textSecondary">
                 ConversationId: {selectedConversationId}
+              </div>
+              <div className="rounded-lg border border-border bg-surface px-4 py-3">
+                <div className="mb-2 text-xs uppercase text-textSecondary">Conversation Summary</div>
+                <div className="grid gap-2 text-sm">
+                  <div className="text-textSecondary">
+                    PatientId: {selectedConversation?.summaryPatientId || '—'}
+                  </div>
+                  <div className="text-textSecondary">
+                    SpecialtyCode: {selectedConversation?.summarySpecialtyCode?.trim() || '—'}
+                  </div>
+                  <div className="text-textSecondary">
+                    UpdatedAt:{' '}
+                    {selectedConversation?.summaryUpdatedAt ? formatDateTime(selectedConversation.summaryUpdatedAt) : '—'}
+                  </div>
+                  <div className="rounded-lg border border-border/70 bg-white px-3 py-3 text-textPrimary whitespace-pre-wrap">
+                    {selectedConversation?.summaryText?.trim() || 'Summary пока не сохранен.'}
+                  </div>
+                </div>
               </div>
               {isTurnsLoading && <div className="text-sm text-textSecondary">⏳ Загрузка...</div>}
               {isTurnsFetching && !isTurnsLoading && (

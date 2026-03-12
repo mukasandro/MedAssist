@@ -83,8 +83,10 @@ public class BotChatService : IBotChatService
             .ToListAsync(cancellationToken);
         history.Reverse();
 
+        var patientIdUsed = doctor.LastSelectedPatientId;
+        var specialtyCodeUsed = ResolvePrimarySpecializationCode(doctor);
         var messages = BuildMessages(history, request.Text);
-        var llmResult = await GenerateAsync(doctor, messages, cancellationToken);
+        var llmResult = await GenerateAsync(patientIdUsed, specialtyCodeUsed, messages, cancellationToken);
 
         await using var tx = await _db.Database.BeginTransactionAsync(cancellationToken);
         try
@@ -121,6 +123,32 @@ public class BotChatService : IBotChatService
             else
             {
                 conversation.UpdatedAt = now;
+            }
+
+            var shouldPersistSummary = patientIdUsed.HasValue
+                || !string.IsNullOrWhiteSpace(specialtyCodeUsed)
+                || !string.IsNullOrWhiteSpace(llmResult.Summary);
+
+            if (shouldPersistSummary)
+            {
+                var conversationSummary = isNewConversation
+                    ? null
+                    : await _db.BotConversationSummaries
+                        .FirstOrDefaultAsync(x => x.ConversationId == conversation.Id, cancellationToken);
+
+                if (conversationSummary is null)
+                {
+                    conversationSummary = new BotConversationSummary
+                    {
+                        ConversationId = conversation.Id
+                    };
+                    _db.BotConversationSummaries.Add(conversationSummary);
+                }
+
+                conversationSummary.PatientId = patientIdUsed;
+                conversationSummary.SpecialtyCode = specialtyCodeUsed;
+                conversationSummary.SummaryText = NormalizeContent(llmResult.Summary);
+                conversationSummary.UpdatedAt = now;
             }
 
             var turn = new BotChatTurn
@@ -203,6 +231,10 @@ public class BotChatService : IBotChatService
                     .OrderByDescending(t => t.CreatedAt)
                     .Select(t => t.UserText)
                     .FirstOrDefault(),
+                x.Summary != null ? x.Summary.PatientId : null,
+                x.Summary != null ? x.Summary.SpecialtyCode : null,
+                x.Summary != null ? x.Summary.SummaryText : null,
+                x.Summary != null ? x.Summary.UpdatedAt : null,
                 x.CreatedAt,
                 x.UpdatedAt))
             .ToListAsync(cancellationToken);
@@ -280,7 +312,8 @@ public class BotChatService : IBotChatService
     }
 
     private async Task<LlmGatewayGenerateResponse> GenerateAsync(
-        Doctor doctor,
+        Guid? patientId,
+        string? specialtyCode,
         IReadOnlyList<LlmGatewayChatMessage> messages,
         CancellationToken cancellationToken)
     {
@@ -299,8 +332,8 @@ public class BotChatService : IBotChatService
         var endpoint = $"{baseUrl.TrimEnd('/')}/v1/enrich";
         var payload = new EnrichGenerateRequest
         {
-            PatientId = doctor.LastSelectedPatientId?.ToString(),
-            DoctorSpecializationCode = ResolvePrimarySpecializationCode(doctor),
+            PatientId = patientId?.ToString(),
+            DoctorSpecializationCode = specialtyCode,
             Messages = messages
         };
         var payloadJson = JsonSerializer.Serialize(payload, LogJsonOptions);
@@ -330,10 +363,28 @@ public class BotChatService : IBotChatService
             throw new InvalidOperationException("Enrich service returned empty response.");
         }
 
-        var content = !string.IsNullOrWhiteSpace(result.LlmResponse)
-            ? result.LlmResponse
-            : result.EnrichedText;
-        if (string.IsNullOrWhiteSpace(content))
+        var llmResponse = NormalizeContent(result.LlmResponse);
+        var enrichedText = NormalizeContent(result.EnrichedText);
+        string? answer = null;
+        string? summary = null;
+
+        if (!string.IsNullOrWhiteSpace(llmResponse))
+        {
+            if (TryParseStructuredLlmResponse(llmResponse, out var structuredResponse))
+            {
+                answer = NormalizeContent(structuredResponse.Answer);
+                summary = NormalizeContent(structuredResponse.Summary);
+            }
+            else
+            {
+                _logger.LogDebug("Enrich returned non-JSON LlmResponse. Falling back to raw text.");
+            }
+
+            answer ??= llmResponse;
+        }
+
+        answer ??= enrichedText;
+        if (string.IsNullOrWhiteSpace(answer))
         {
             throw new InvalidOperationException("Enrich service returned empty response content.");
         }
@@ -341,11 +392,12 @@ public class BotChatService : IBotChatService
         return new LlmGatewayGenerateResponse(
             "enrich",
             "enrich",
-            content.Trim(),
+            answer.Trim(),
             null,
             null,
             null,
-            null);
+            null,
+            summary);
     }
 
     private static IReadOnlyList<LlmGatewayChatMessage> BuildMessages(
@@ -390,6 +442,24 @@ public class BotChatService : IBotChatService
         return string.IsNullOrWhiteSpace(code) ? null : code.Trim();
     }
 
+    private static string? NormalizeContent(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    private static bool TryParseStructuredLlmResponse(string value, out StructuredLlmResponse structuredResponse)
+    {
+        try
+        {
+            structuredResponse = JsonSerializer.Deserialize<StructuredLlmResponse>(value, JsonOptions)
+                ?? new StructuredLlmResponse(null, null);
+            return true;
+        }
+        catch (JsonException)
+        {
+            structuredResponse = new StructuredLlmResponse(null, null);
+            return false;
+        }
+    }
+
     private static BotChatAnswerDto ToDto(BotChatTurn turn) =>
         new(
             turn.ConversationId,
@@ -422,6 +492,10 @@ public class BotChatService : IBotChatService
         [property: JsonPropertyName("LlmResponse")] string? LlmResponse,
         [property: JsonPropertyName("TimeStamp")] DateTimeOffset? TimeStamp);
 
+    private sealed record StructuredLlmResponse(
+        [property: JsonPropertyName("answer")] string? Answer,
+        [property: JsonPropertyName("summary")] string? Summary);
+
     private sealed record LlmGatewayGenerateResponse(
         string Provider,
         string Model,
@@ -429,5 +503,6 @@ public class BotChatService : IBotChatService
         string? FinishReason,
         int? PromptTokens,
         int? CompletionTokens,
-        string? RequestId);
+        string? RequestId,
+        string? Summary);
 }

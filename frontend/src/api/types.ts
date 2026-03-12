@@ -122,6 +122,10 @@ export interface BotConversationHistoryDto {
   telegramUserId: number
   turnsCount: number
   lastUserText?: string | null
+  summaryPatientId?: string | null
+  summarySpecialtyCode?: string | null
+  summaryText?: string | null
+  summaryUpdatedAt?: string | null
   createdAt: string
   updatedAt: string
 }
